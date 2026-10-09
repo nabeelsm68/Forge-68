@@ -150,42 +150,20 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
     };
   };
 
-  // Human-readable search summary synthesizer
-  const getSearchAnswerSummary = (query: string, results: KnowledgeSearchResponse["results"]) => {
+  // Grounded search summary derived from top retrieved chunk
+  const getSearchAnswerSummary = (results: KnowledgeSearchResponse["results"]) => {
     if (!results || results.length === 0) return null;
-    const topText = results[0]?.chunk?.text || "";
+    const topChunk = results[0]?.chunk;
+    const topText = topChunk?.text || "";
 
-    if (query.toLowerCase().includes("trip") || query.toLowerCase().includes("limit") || query.toLowerCase().includes("shutdown")) {
-      return {
-        headline: "Normal pressure is 31.2 bar. High alarm triggers at 33.5 bar, and automatic trip shutdown occurs at 35.0 bar.",
-        detail: "Records indicate the system operates with a +2.3 bar buffer before reaching alarm state. Any reading above 33.0 bar warrants immediate shift review.",
-        source: String(results[0]?.chunk?.metadata?.filename || "operating_sop_204_rev_c.md"),
-      };
-    }
-
-    if (query.toLowerCase().includes("relief") || query.toLowerCase().includes("psv") || query.toLowerCase().includes("valve")) {
-      return {
-        headline: "Relief valve PSV-204 is set to lift at 36.5 bar with annual calibration requirement.",
-        detail: "Only authorized personnel with Admin authority may calibrate or modify PSV setpoints. Engineers cannot alter relief settings autonomously.",
-        source: String(results[0]?.chunk?.metadata?.filename || "operating_sop_204_rev_c.md"),
-      };
-    }
-
-    if (query.toLowerCase().includes("thickness") || query.toLowerCase().includes("paut") || query.toLowerCase().includes("wall")) {
-      return {
-        headline: "Minimum shell wall thickness is 31.8 mm, comfortably above the 28.0 mm retirement limit.",
-        detail: "PAUT ultrasonic inspection confirmed zero active corrosion cracking across shell welds. Unit approved for continued operation.",
-        source: String(results[0]?.chunk?.metadata?.filename || "inspection_report_204_07.md"),
-      };
-    }
-
-    // Default synthesis from top retrieved chunk
     const sentences = topText.split(/(?<=[.?!])\s+/);
     const lead = sentences.slice(0, 2).join(" ");
+    const filename = String(topChunk?.metadata?.filename || topChunk?.metadata?.title || "Technical Document");
+
     return {
       headline: lead.length > 20 ? lead : topText.slice(0, 160) + "...",
-      detail: `Synthesized from private document chunk [${results[0].chunk.chunk_id}] with ${(results[0].score * 100).toFixed(0)}% semantic match.`,
-      source: String(results[0]?.chunk?.metadata?.filename || "plant_archive"),
+      detail: `Retrieved from ${filename} [chunk: ${topChunk.chunk_id}] with ${(results[0].score * 100).toFixed(1)}% semantic relevance.`,
+      source: filename,
     };
   };
 
@@ -480,9 +458,9 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
 
           {searchResults && searchResults.results.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* Human-Readable Answer Card (Judges see this first) */}
+              {/* Human-Readable Answer Card */}
               {(() => {
-                const summary = getSearchAnswerSummary(searchQuery, searchResults.results);
+                const summary = getSearchAnswerSummary(searchResults.results);
                 return (
                   <div
                     style={{
@@ -494,7 +472,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--sage)", fontWeight: 600 }}>
-                        HUMAN-READABLE ANSWER
+                        TOP RETRIEVED SYNTHESIS
                       </span>
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
                         Synthesized from private plant records
@@ -537,74 +515,122 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
 
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", letterSpacing: "0.06em" }}>
-                  SOURCE INFORMATION BENEATH
+                  RETRIEVED PASSAGES ({searchResults.results.length})
                 </span>
                 <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
               </div>
 
-              {/* Source Passages */}
-              {searchResults.results.map((r, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    background: "var(--bg-0)",
-                    border: "1px solid var(--line)",
-                    borderLeft: "3px solid var(--sage)",
-                    borderRadius: "var(--radius-panel)",
-                    padding: "14px 16px",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", fontWeight: 600 }}>
-                        PASSAGE [{String(idx + 1).padStart(2, "0")}]
-                      </span>
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)", border: "1px solid var(--line)", padding: "1px 6px", borderRadius: "var(--radius-pill)" }}>
-                        {((r.chunk.metadata?.classification as string) || clearance)}
-                      </span>
+              {/* Source Passages with Complete Provenance Fields */}
+              {searchResults.results.map((r, idx) => {
+                const docName = (r.chunk.metadata?.title as string) || (r.chunk.metadata?.filename as string) || "Technical Document";
+                const sourcePath = (r.chunk.metadata?.file_path as string) || (r.chunk.metadata?.source_path as string) || (r.chunk.metadata?.filename as string) || r.chunk.document_id;
+                const section = (r.chunk.metadata?.section as string) || (r.chunk.metadata?.header as string) || `Chunk #${r.chunk.chunk_index}`;
+                const chunkClass = ((r.chunk.metadata?.classification as string) || clearance);
+                const asset = Array.isArray(r.chunk.metadata?.equipment_ids) && r.chunk.metadata.equipment_ids.length > 0
+                  ? r.chunk.metadata.equipment_ids.join(", ")
+                  : (r.chunk.metadata?.equipment_id as string) || "Reactor R-204";
+
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      background: "var(--bg-0)",
+                      border: "1px solid var(--line)",
+                      borderLeft: "3px solid var(--sage)",
+                      borderRadius: "var(--radius-panel)",
+                      padding: "14px 16px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", fontWeight: 600 }}>
+                          PASSAGE [{String(idx + 1).padStart(2, "0")}]
+                        </span>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10.5px", color: "var(--ink)", background: "var(--bg-2)", padding: "1px 6px", borderRadius: "var(--radius-sm)" }}>
+                          {docName}
+                        </span>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--ink-3)", border: "1px solid var(--line)", padding: "1px 6px", borderRadius: "var(--radius-pill)" }}>
+                          {chunkClass}
+                        </span>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--sage)", fontWeight: 600 }}>
+                          {(r.score * 100).toFixed(1)}% MATCH
+                        </span>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--ink-3)" }}>
+                          (Score: {r.score.toFixed(3)})
+                        </span>
+                      </div>
                     </div>
 
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--sage)", fontWeight: 600 }}>
-                      {(r.score * 100).toFixed(0)}% MATCH
-                    </span>
-                  </div>
+                    {/* Section & Asset Association */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontFamily: "var(--font-mono)", fontSize: "10.5px", color: "var(--ink-3)" }}>
+                      <span>Section: <strong style={{ color: "var(--ink-2)" }}>{section}</strong></span>
+                      <span>·</span>
+                      <span>Asset: <strong style={{ color: "var(--brass)" }}>{asset}</strong></span>
+                      <span>·</span>
+                      <span>Source: <span style={{ color: "var(--ink-3)" }}>{sourcePath}</span></span>
+                    </div>
 
-                  <p
-                    style={{
-                      fontFamily: "var(--font-ui)",
-                      fontSize: "13.5px",
-                      color: "var(--ink)",
-                      lineHeight: 1.55,
-                      background: "var(--bg-1)",
-                      padding: "10px 12px",
-                      borderRadius: "var(--radius-sm)",
-                      border: "1px solid var(--line)",
-                      margin: "8px 0",
-                    }}
-                  >
-                    &ldquo;{r.chunk.text}&rdquo;
-                  </p>
+                    <p
+                      style={{
+                        fontFamily: "var(--font-ui)",
+                        fontSize: "13.5px",
+                        color: "var(--ink)",
+                        lineHeight: 1.55,
+                        background: "var(--bg-1)",
+                        padding: "10px 12px",
+                        borderRadius: "var(--radius-sm)",
+                        border: "1px solid var(--line)",
+                        margin: "4px 0",
+                      }}
+                    >
+                      &ldquo;{r.chunk.text}&rdquo;
+                    </p>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: "11px",
-                      color: "var(--ink-3)",
-                      paddingTop: 6,
-                    }}
-                  >
-                    <span>
-                      Document: <strong style={{ color: "var(--ink-2)" }}>{((r.chunk.metadata?.filename as string) || "Technical Specification")}</strong>
-                    </span>
-                    <span>
-                      Chunk ID: {r.chunk.chunk_id}
-                    </span>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "10px",
+                        color: "var(--ink-3)",
+                      }}
+                    >
+                      <span>Document ID: {r.chunk.document_id}</span>
+                      <span>Chunk ID: {r.chunk.chunk_id}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          ) : searchResults && searchResults.results.length === 0 ? (
+            <div style={{ padding: "40px 20px", textAlign: "center", background: "var(--bg-0)", border: "1px solid var(--line)", borderRadius: "var(--radius-panel)" }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--coral-text)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                NO MATCHING RECORDS FOUND
+              </div>
+              <h3 style={{ fontFamily: "var(--font-display)", fontSize: "20px", color: "var(--ink)", marginBottom: 8, fontWeight: 500 }}>
+                No records matched &ldquo;{searchQuery}&rdquo;
+              </h3>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: "13.5px", color: "var(--ink-2)", maxWidth: "48ch", margin: "0 auto 16px" }}>
+                Zero document chunks met the semantic threshold under clearance level <strong>{clearance}</strong>. Check spelling or try a broader search query.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("Reactor R-204 operating pressure");
+                  searchKnowledge("Reactor R-204 operating pressure", 5, clearance).then(setSearchResults).catch(() => {});
+                }}
+                className="btn-brass-secondary"
+                style={{ fontSize: "12px", padding: "6px 14px" }}
+              >
+                Reset to default query: Reactor R-204 operating pressure ↺
+              </button>
             </div>
           ) : (
             <div style={{ padding: "48px 24px", textAlign: "center", color: "var(--ink-3)" }}>

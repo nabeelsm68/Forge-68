@@ -209,6 +209,7 @@ export default function Home() {
               role={role}
               clearance={clearance}
               onExecutionComplete={handleExecutionComplete}
+              onReset={() => setLastResponse(null)}
               lastResponse={lastResponse}
             />
           )}

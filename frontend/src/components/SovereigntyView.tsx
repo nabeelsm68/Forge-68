@@ -72,34 +72,34 @@ export function SovereigntyView() {
 
   const fiveCards = [
     {
+      technicalLabel: "01 LOCAL INFERENCE",
       title: "Local AI",
       badge: isModelLive ? "Live Sovereign Model" : "On-Premise Ready",
       description: `Runs on-premise (${sovereignty?.model_provider.default_model || "qwen3:8b"} via ${sovereignty?.model_provider.type.toUpperCase() || "OLLAMA"}). No cloud AI, zero external API calls, zero cloud SDK dependencies.`,
-      icon: "⚡",
     },
     {
+      technicalLabel: "02 KNOWLEDGE FABRIC",
       title: "Local Knowledge",
       badge: "On-Premise Vector Enclave",
       description: `Private plant documents indexed locally (${runtime.embeddingModel || sovereignty?.embedding_provider.model || "Local Embeddings"}). Zero cloud vector databases. Access strictly bounded by role clearance.`,
-      icon: "📚",
     },
     {
+      technicalLabel: "03 CONTROLLED TOOLS",
       title: "Local Tools",
       badge: "Bounded Execution",
       description: "Industrial actuation, SCADA telemetry queries, and file operations execute inside local sandboxes. Policy gateway intercepts every call before execution.",
-      icon: "🔧",
     },
     {
+      technicalLabel: "04 INDEPENDENT VERIFICATION",
       title: "Independent Verification",
       badge: "Deterministic Code Checks",
       description: "7 discrete verification checks evaluate facts, unit bounds, and calculations using pure Python code. The AI model is never allowed to grade its own work.",
-      icon: "✓",
     },
     {
+      technicalLabel: "05 LOCAL AUDIT",
       title: "Local Audit",
       badge: "Append-Only Local Sink",
       description: "Every question, reasoning trace, tool execution, and verification check is logged to an immutable local file sink. Data never leaves your facility.",
-      icon: "📜",
     },
   ];
 
@@ -262,7 +262,9 @@ export function SovereigntyView() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "20px" }}>{card.icon}</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", letterSpacing: "0.08em", fontWeight: 600 }}>
+                  {card.technicalLabel}
+                </span>
                 <span
                   style={{
                     fontFamily: "var(--font-mono)",

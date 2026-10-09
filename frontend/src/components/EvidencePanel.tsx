@@ -34,70 +34,9 @@ export function EvidencePanel({
       ]
     : [];
 
-  // Default baseline evidence for Reactor R-204 if none dynamically captured
-  const displayRecords: EvidenceRecord[] = allRecords.length > 0 ? allRecords : [
-    {
-      evidence_id: "evd-doc-r204-sop",
-      source_type: "knowledge_document",
-      source_reference: "doc:r204_operating_sop.md#chunk_0",
-      classification: "INTERNAL",
-      retrieved_data: {},
-      timestamp: "2026-10-06T00:00:00Z",
-      verified: true,
-      retrieved_text: "SOP-R204 Rev C §3.2: Normal operating baseline pressure is 31.2 bar. High alarm threshold is configured at 33.5 bar. Safety trip shutdown interlock triggers at 35.0 bar.",
-      filename: "r204_operating_sop.md",
-      retrieval_score: 0.94,
-      chunk_id: "chunk_0",
-    },
-    {
-      evidence_id: "evd-vis-pi204-dial",
-      source_type: "visual_inspection",
-      source_reference: "img:r204_pressure_gauge.png#dial_pi204",
-      classification: "INTERNAL",
-      retrieved_data: {},
-      timestamp: "2026-10-06T00:00:00Z",
-      verified: true,
-      retrieved_text: "Visual inspection of analog gauge PI-204 needle reveals steady-state reading at 33.0 bar. Dial condition intact with valid calibration stamp.",
-      finding_type: "ANALOG_GAUGE_OBSERVATION",
-      source_image_hash: "f48b11c0993ad8371948ba1283c74829",
-    },
-    {
-      evidence_id: "evd-tool-paut-thickness",
-      source_type: "LOCAL_INDUSTRIAL_TOOL",
-      source_reference: "tool:query_equipment_history",
-      classification: "INTERNAL",
-      retrieved_data: {},
-      timestamp: "2026-10-06T00:00:00Z",
-      verified: true,
-      retrieved_text: "PAUT ultrasonic inspection record 204-07 indicates minimum cylindrical shell wall thickness of 2.2 mm at nozzle junction N2.",
-      tool_name: "query_equipment_history",
-    },
-  ];
-
-  const defaultCalculations: CalculationResult[] = [
-    {
-      calculation_id: "calc-press-var-01",
-      calculation_type: "PRESSURE_VARIANCE",
-      result: 1.8,
-      units: "bar",
-      supporting_evidence_ids: ["evd-doc-r204-sop", "evd-vis-pi204-dial"],
-      timestamp: "2026-10-06T00:00:00Z",
-      description: "Observed telemetry reading (33.0 bar) is +1.8 bar above normal operating baseline (31.2 bar).",
-      inputs: { observed_bar: 33.0, baseline_bar: 31.2 },
-    },
-    {
-      calculation_id: "calc-alarm-margin-02",
-      calculation_type: "ALARM_MARGIN",
-      result: 0.5,
-      units: "bar",
-      supporting_evidence_ids: ["evd-doc-r204-sop", "evd-vis-pi204-dial"],
-      timestamp: "2026-10-06T00:00:00Z",
-      description: "Remaining margin to high pressure alarm threshold (33.5 bar) is 0.5 bar.",
-      inputs: { alarm_bar: 33.5, observed_bar: 33.0 },
-    },
-  ];
-
-  const activeCalculations = calculations.length > 0 ? calculations : (allRecords.length === 0 ? defaultCalculations : []);
+  // Only render actual execution evidence records strictly belonging to current run
+  const displayRecords: EvidenceRecord[] = allRecords;
+  const activeCalculations: CalculationResult[] = calculations;
 
   const filteredRecords = displayRecords.filter((rec) => {
     if (filter === "ALL") return true;

@@ -6,6 +6,7 @@ import {
   AuditEventsResponse,
   ExecutionEvent,
   fetchAuditEvents,
+  resetDemo,
 } from "@/lib/api";
 import {
   EnamelSurface,
@@ -15,11 +16,34 @@ import {
 
 type EventFilter = "ALL" | "AGENT" | "TOOL" | "POLICY" | "VERIFICATION" | "KNOWLEDGE";
 
+function formatISTTimestamp(isoString: string): string {
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    return (
+      d.toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }) + " IST"
+    );
+  } catch {
+    return isoString;
+  }
+}
+
 export function AuditView() {
   const [auditData, setAuditData] = useState<AuditEventsResponse | null>(null);
   const [filter, setFilter] = useState<EventFilter>("ALL");
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isResetting, setIsResetting] = useState<boolean>(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadAuditData = async () => {
@@ -32,6 +56,20 @@ export function AuditView() {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResetAudit = async () => {
+    setIsResetting(true);
+    setError(null);
+    try {
+      const res = await resetDemo();
+      setResetMessage(`Cleared ${res.cleared_audit_events_count} transient audit events.`);
+      await loadAuditData();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -62,6 +100,10 @@ export function AuditView() {
   // Combine agent and tool events into unified timeline
   interface UnifiedEvent {
     id: string;
+    runId?: string;
+    scenarioId?: string;
+    tool?: string;
+    policy?: string;
     timestamp: string;
     type: string;
     category: "AGENT" | "TOOL" | "POLICY" | "VERIFICATION" | "KNOWLEDGE";
@@ -79,37 +121,55 @@ export function AuditView() {
     else if (e.event_type.includes("VERIFICATION")) cat = "VERIFICATION";
     else if (e.event_type.includes("TOOL")) cat = "TOOL";
 
-    const summary = e.details?.query
-      ? String(e.details.query)
-      : e.details?.reasoning
-      ? String(e.details.reasoning)
-      : e.details?.summary
-      ? String(e.details.summary)
-      : JSON.stringify(e.details || {});
+    const details = (e.details || {}) as Record<string, unknown>;
+    const runId = (details.run_id as string) || undefined;
+    const scenarioId = (details.scenario_id as string) || undefined;
+    const tool = (details.tool_name as string) || (details.tool as string) || undefined;
+    const policy = (details.policy_id as string) || (details.policy as string) || undefined;
+
+    const summary = details?.query
+      ? String(details.query)
+      : details?.reasoning
+      ? String(details.reasoning)
+      : details?.summary
+      ? String(details.summary)
+      : JSON.stringify(details);
 
     return {
       id: e.event_id,
+      runId,
+      scenarioId,
+      tool,
+      policy,
       timestamp: e.timestamp,
       type: e.event_type,
       category: cat,
       actor: e.requester || "engineer_operator",
       role: e.role || "ENGINEER",
       summary,
-      raw: e.details as Record<string, unknown>,
+      raw: details,
     };
   });
 
-  const toolEvents: UnifiedEvent[] = (auditData?.tool_events || []).map((te: ExecutionEvent) => ({
-    id: te.event_id,
-    timestamp: te.timestamp,
-    type: `TOOL_${te.tool.toUpperCase()}`,
-    category: "TOOL",
-    actor: te.requester,
-    role: te.role,
-    summary: `Tool '${te.tool}' evaluated: ${te.decision} (${te.reason})`,
-    decision: te.decision,
-    raw: te as unknown as Record<string, unknown>,
-  }));
+  const toolEvents: UnifiedEvent[] = (auditData?.tool_events || []).map((te: ExecutionEvent) => {
+    const params = (te.parameters || {}) as Record<string, unknown>;
+    const runId = (params.run_id as string) || undefined;
+
+    return {
+      id: te.event_id,
+      runId,
+      tool: te.tool,
+      policy: te.reason,
+      timestamp: te.timestamp,
+      type: `TOOL_${te.tool.toUpperCase()}`,
+      category: "TOOL",
+      actor: te.requester,
+      role: te.role,
+      summary: `Tool '${te.tool}' evaluated: ${te.decision} (${te.reason})`,
+      decision: te.decision,
+      raw: te as unknown as Record<string, unknown>,
+    };
+  });
 
   const allEvents = [...agentEvents, ...toolEvents].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -210,7 +270,15 @@ export function AuditView() {
             </p>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <button
+              onClick={handleResetAudit}
+              disabled={isLoading || isResetting}
+              className="btn-brass-secondary"
+              style={{ fontSize: "12px", padding: "6px 14px", cursor: isResetting ? "not-allowed" : "pointer" }}
+            >
+              {isResetting ? "Resetting..." : "↺ Reset Transient Audit State"}
+            </button>
             <button
               onClick={loadAuditData}
               disabled={isLoading}
@@ -221,6 +289,31 @@ export function AuditView() {
             </button>
           </div>
         </div>
+
+        {resetMessage && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: "8px 12px",
+              background: "rgba(156, 195, 168, 0.08)",
+              border: "1px solid var(--sage)",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "12.5px",
+              color: "var(--sage)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <span>✓ {resetMessage}</span>
+            <button
+              onClick={() => setResetMessage(null)}
+              style={{ background: "none", border: "none", color: "var(--sage)", cursor: "pointer" }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         <Divider style={{ margin: "20px 0" }} />
 
@@ -448,8 +541,11 @@ export function AuditView() {
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-                        {evt.timestamp}
+                      <span
+                        title={evt.timestamp}
+                        style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)", cursor: "help" }}
+                      >
+                        {formatISTTimestamp(evt.timestamp)}
                       </span>
                       <button
                         onClick={() => toggleExpand(evt.id)}
@@ -492,9 +588,26 @@ export function AuditView() {
                       color: "var(--ink-3)",
                     }}
                   >
-                    <span>
-                      Actor: <strong style={{ color: "var(--ink-2)" }}>{evt.actor}</strong> ({evt.role})
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <span>
+                        Actor: <strong style={{ color: "var(--ink-2)" }}>{evt.actor}</strong> ({evt.role})
+                      </span>
+                      {evt.runId && (
+                        <span>
+                          Run ID: <strong style={{ color: "var(--brass)" }}>{evt.runId}</strong>
+                        </span>
+                      )}
+                      {evt.tool && (
+                        <span>
+                          Tool: <strong style={{ color: "var(--sage)" }}>{evt.tool}</strong>
+                        </span>
+                      )}
+                      {evt.scenarioId && (
+                        <span>
+                          Scenario: <strong style={{ color: "var(--ink)" }}>{evt.scenarioId}</strong>
+                        </span>
+                      )}
+                    </div>
                     <span>
                       Event ID: {evt.id}
                     </span>

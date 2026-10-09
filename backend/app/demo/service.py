@@ -21,6 +21,7 @@ import logging
 from pathlib import Path
 import time
 from typing import Any, Dict, List, Optional
+import uuid
 
 from app.config import settings
 from app.core import AgentQueryRequest, AgentReasoningService, agent_reasoning_service
@@ -223,10 +224,12 @@ class DemoOrchestrationService:
 
     async def run_scenario(self, request: DemoRunRequest) -> DemoRunResponse:
         """Execute a selected scenario through real FORGE services with full audit trace."""
-        scenario_id = request.scenario
+        scenario_id = request.scenario_id or request.scenario
         meta = SCENARIO_METADATA.get(scenario_id)
         if not meta:
             raise ValueError(f"Unknown demo scenario identifier: '{scenario_id}'")
+
+        run_id = request.run_id or f"run-{uuid.uuid4().hex[:12]}"
 
         # 1. Ensure offline knowledge base is populated
         await self.ensure_demo_knowledge_ingested()
@@ -278,6 +281,8 @@ class DemoOrchestrationService:
             classification=classification,
             has_approval=False,
             image_path=image_path,
+            scenario_id=scenario_id.value,
+            run_id=run_id,
         )
 
         # 5. Execute full agent loop through real services with monotonic timing
@@ -294,17 +299,17 @@ class DemoOrchestrationService:
         elif isinstance(agent_resp.timing, DemoExecutionTiming):
             timing_model = agent_resp.timing
 
-        # 6. Extract trace audit events for this run
-        all_agent_events = audit_event_sink.get_agent_events(limit=50)
-        all_tool_events = audit_event_sink.get_events(limit=50)
+        # 6. Extract trace audit events strictly for THIS exact run
+        all_agent_events = audit_event_sink.get_agent_events(limit=100)
+        run_agent_events = [e for e in all_agent_events if e.details.get("run_id") == run_id]
 
         recent_audit_events: List[Dict[str, Any]] = [
             {"event_id": e.event_id, "type": e.event_type.value, "details": e.details, "timestamp": e.timestamp}
-            for e in reversed(all_agent_events[:20])
+            for e in reversed(run_agent_events)
         ]
         security_events: List[Dict[str, Any]] = [
             e for e in recent_audit_events
-            if e["type"] in ("SECURITY_ALERT", "POLICY_EVALUATED") or "DENY" in str(e["details"])
+            if e["type"] in ("SECURITY_ALERT", "PROMPT_INJECTION_DETECTED")
         ]
 
         # 7. Extract visual findings and calculations
@@ -321,9 +326,12 @@ class DemoOrchestrationService:
         if agent_resp.verification and agent_resp.verification.calculations:
             calculations = agent_resp.verification.calculations
 
-        # 8. Assemble Complete M8-Compatible Demo Response
+        # 8. Assemble Complete M8-Compatible Demo Response with explicit run identity
         return DemoRunResponse(
             scenario=scenario_id,
+            scenario_id=scenario_id,
+            run_id=run_id,
+            execution_state="COMPLETED",
             scenario_title=meta.title,
             query=agent_resp.query,
             final_answer=agent_resp.final_answer,

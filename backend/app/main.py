@@ -48,7 +48,12 @@ from app.vision import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup validation
+    # Startup validation and offline knowledge base pre-population
+    try:
+        from app.demo import demo_orchestration_service
+        await demo_orchestration_service.ensure_demo_knowledge_ingested()
+    except Exception:
+        pass
     yield
     # Shutdown cleanup
 

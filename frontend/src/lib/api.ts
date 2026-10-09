@@ -120,6 +120,8 @@ export interface VerificationResult {
 
 export interface AgentQueryRequest {
   query: string;
+  scenario_id?: string;
+  run_id?: string;
   role?: Role;
   requester?: string;
   classification?: DataClassification;
@@ -132,15 +134,28 @@ export interface AgentQueryResponse {
   query: string;
   final_answer: string;
   status: AgentQueryStatus;
+  scenario_id?: string;
+  run_id?: string;
+  execution_state?: string;
   plan?: AgentPlan;
   agent_plan?: AgentPlan;
   knowledge_queries: KnowledgeQueryPlan[];
   tool_calls: ToolCallPlan[];
   policy_decisions: PolicyDecision[];
+  policy_decision?: PolicyDecision;
+  calculations?: CalculationResult[];
   evidence_set?: EvidenceSet;
   verification?: VerificationResult;
   execution_event_id?: string;
   timing?: DemoExecutionTiming;
+  model_name?: string;
+  provider?: string;
+  latency_ms?: number;
+  tokens?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }
 
 
@@ -487,6 +502,8 @@ export interface DemoScenarioMetadata {
 
 export interface DemoRunRequest {
   scenario: DemoScenarioId;
+  scenario_id?: DemoScenarioId;
+  run_id?: string;
   role?: Role;
   classification?: DataClassification;
   deterministic?: boolean;
@@ -494,6 +511,9 @@ export interface DemoRunRequest {
 
 export interface DemoRunResponse extends AgentQueryResponse {
   scenario: DemoScenarioId;
+  scenario_id: DemoScenarioId;
+  run_id: string;
+  execution_state: string;
   scenario_title: string;
   execution_phases: string[];
   audit_events: Array<{
@@ -513,6 +533,12 @@ export interface DemoRunResponse extends AgentQueryResponse {
   timing?: DemoExecutionTiming;
   is_synthetic: boolean;
   synthetic_notice: string;
+  dossier?: {
+    finding_summary?: string;
+    operational_status?: string;
+    verdict?: string;
+    evidence_count?: number;
+  };
 }
 
 export interface DemoExecutionTiming {

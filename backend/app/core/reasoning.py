@@ -102,6 +102,24 @@ class AgentReasoningService:
 
     async def process_query(self, request: AgentQueryRequest) -> AgentQueryResponse:
         """Execute the unified, sovereign, evidence-grounded and verified agent workflow."""
+        import uuid
+        run_id = request.run_id or f"run-{uuid.uuid4().hex[:12]}"
+        scenario_id = request.scenario_id
+
+        def record_agent_trace(event_type: AgentEventType, details: Dict[str, Any]) -> AgentTraceEvent:
+            trace_details = dict(details)
+            trace_details["run_id"] = run_id
+            if scenario_id:
+                trace_details["scenario_id"] = scenario_id
+            return audit_event_sink.record_agent_event(
+                AgentTraceEvent(
+                    event_type=event_type,
+                    requester=request.requester,
+                    role=request.role,
+                    details=trace_details,
+                )
+            )
+
         t_start = time.perf_counter()
         planning_duration_ms = 0.0
         knowledge_retrieval_duration_ms = 0.0
@@ -112,23 +130,20 @@ class AgentReasoningService:
 
         # 1. Structured trace & log: AGENT_REQUEST
         logger.info(
-            "[AGENT_REQUEST] Query: '%s' | Requester: '%s' | Role: '%s' | Clearance: '%s'",
+            "[AGENT_REQUEST] Query: '%s' | Requester: '%s' | Role: '%s' | Clearance: '%s' | Run: '%s'",
             request.query,
             request.requester,
             request.role.value,
             request.classification.value,
+            run_id,
         )
-        audit_event_sink.record_agent_event(
-            AgentTraceEvent(
-                event_type=AgentEventType.AGENT_REQUEST,
-                requester=request.requester,
-                role=request.role,
-                details={
-                    "query": request.query,
-                    "classification": request.classification.value,
-                    "has_approval": request.has_approval,
-                },
-            )
+        record_agent_trace(
+            AgentEventType.AGENT_REQUEST,
+            {
+                "query": request.query,
+                "classification": request.classification.value,
+                "has_approval": request.has_approval,
+            },
         )
 
         # 1b. Prompt-Security Boundary: Scan for adversarial injection patterns
@@ -136,17 +151,13 @@ class AgentReasoningService:
         detected_injection = detect_prompt_injection(request.query)
         if detected_injection:
             logger.warning("[PROMPT_INJECTION_DETECTED] Adversarial pattern detected in query: '%s'. Quarantining as untrusted data.", detected_injection)
-            audit_event_sink.record_agent_event(
-                AgentTraceEvent(
-                    event_type=AgentEventType.SECURITY_ALERT,
-                    requester=request.requester,
-                    role=request.role,
-                    details={
-                        "alert_type": "PROMPT_INJECTION_DETECTED",
-                        "detected_pattern": detected_injection,
-                        "action": "QUARANTINED_AS_UNTRUSTED_DATA",
-                    },
-                )
+            record_agent_trace(
+                AgentEventType.SECURITY_ALERT,
+                {
+                    "alert_type": "PROMPT_INJECTION_DETECTED",
+                    "detected_pattern": detected_injection,
+                    "action": "QUARANTINED_AS_UNTRUSTED_DATA",
+                },
             )
 
         # 2. Plan Generation: Model proposes an operational AgentPlan
@@ -178,6 +189,9 @@ class AgentReasoningService:
                 query=request.query,
                 final_answer=f"Failed to parse structured model decision: {str(exc)}",
                 status=AgentQueryStatus.INVALID_MODEL_OUTPUT,
+                scenario_id=scenario_id,
+                run_id=run_id,
+                execution_state="FAILED",
                 timing={
                     "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
                     "planning_duration_ms": round(planning_duration_ms, 2),
@@ -198,13 +212,9 @@ class AgentReasoningService:
             len(plan.calculations),
             plan.reasoning or "None",
         )
-        audit_event_sink.record_agent_event(
-            AgentTraceEvent(
-                event_type=AgentEventType.AGENT_PLAN_CREATED,
-                requester=request.requester,
-                role=request.role,
-                details=plan.model_dump(),
-            )
+        record_agent_trace(
+            AgentEventType.AGENT_PLAN_CREATED,
+            plan.model_dump(),
         )
 
         # 4. Handle Direct Action
@@ -242,13 +252,9 @@ class AgentReasoningService:
             verification_duration_ms = (time.perf_counter() - t_verif_start) * 1000.0
 
             logger.info("[AGENT_FINAL_RESPONSE] Emitted direct response.")
-            audit_event_sink.record_agent_event(
-                AgentTraceEvent(
-                    event_type=AgentEventType.AGENT_FINAL_RESPONSE,
-                    requester=request.requester,
-                    role=request.role,
-                    details={"action": "direct", "final_answer_length": len(final_answer)},
-                )
+            record_agent_trace(
+                AgentEventType.AGENT_FINAL_RESPONSE,
+                {"action": "direct", "final_answer_length": len(final_answer)},
             )
             return AgentQueryResponse(
                 query=request.query,
@@ -257,6 +263,9 @@ class AgentReasoningService:
                 plan=plan,
                 agent_plan=plan,
                 verification=direct_verification,
+                scenario_id=scenario_id,
+                run_id=run_id,
+                execution_state="COMPLETED",
                 timing={
                     "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
                     "planning_duration_ms": round(planning_duration_ms, 2),
@@ -307,13 +316,9 @@ class AgentReasoningService:
                     kq.classification.value if kq.classification else "NONE",
                     request.classification.value,
                 )
-                audit_event_sink.record_agent_event(
-                    AgentTraceEvent(
-                        event_type=AgentEventType.KNOWLEDGE_RETRIEVAL_REQUESTED,
-                        requester=request.requester,
-                        role=request.role,
-                        details={"query": kq.query, "user_clearance": request.classification.value},
-                    )
+                record_agent_trace(
+                    AgentEventType.KNOWLEDGE_RETRIEVAL_REQUESTED,
+                    {"query": kq.query, "user_clearance": request.classification.value},
                 )
 
                 effective_filter = None
@@ -345,43 +350,31 @@ class AgentReasoningService:
                     kq.query,
                     len(results),
                 )
-                audit_event_sink.record_agent_event(
-                    AgentTraceEvent(
-                        event_type=AgentEventType.KNOWLEDGE_RETRIEVAL_COMPLETED,
-                        requester=request.requester,
-                        role=request.role,
-                        details={"query": kq.query, "retrieved_count": len(results)},
-                    )
+                record_agent_trace(
+                    AgentEventType.KNOWLEDGE_RETRIEVAL_COMPLETED,
+                    {"query": kq.query, "retrieved_count": len(results)},
                 )
 
                 for evd in results:
                     evidence_set.add_knowledge_evidence(evd)
                     logger.info("[EVIDENCE_CREATED] Knowledge Evidence ID: '%s' | Source: '%s'", evd.evidence_id, evd.source_reference)
-                    audit_event_sink.record_agent_event(
-                        AgentTraceEvent(
-                            event_type=AgentEventType.EVIDENCE_CREATED,
-                            requester=request.requester,
-                            role=request.role,
-                            details={"evidence_id": evd.evidence_id, "source_reference": evd.source_reference},
-                        )
+                    record_agent_trace(
+                        AgentEventType.EVIDENCE_CREATED,
+                        {"evidence_id": evd.evidence_id, "source_reference": evd.source_reference},
                     )
 
                     # Prompt-security check on retrieved untrusted document text
                     doc_injection = detect_prompt_injection(str(evd.retrieved_data) + " " + (evd.retrieved_text or ""))
                     if doc_injection:
                         logger.warning("[PROMPT_INJECTION_IN_DOCUMENT] Quarantined adversarial injection pattern in '%s': '%s'", evd.source_reference, doc_injection)
-                        audit_event_sink.record_agent_event(
-                            AgentTraceEvent(
-                                event_type=AgentEventType.SECURITY_ALERT,
-                                requester=request.requester,
-                                role=request.role,
-                                details={
-                                    "alert_type": "PROMPT_INJECTION_IN_DOCUMENT",
-                                    "source": evd.source_reference,
-                                    "detected_pattern": doc_injection,
-                                    "action": "QUARANTINED_AS_UNTRUSTED_DATA",
-                                },
-                            )
+                        record_agent_trace(
+                            AgentEventType.SECURITY_ALERT,
+                            {
+                                "alert_type": "PROMPT_INJECTION_IN_DOCUMENT",
+                                "source": evd.source_reference,
+                                "detected_pattern": doc_injection,
+                                "action": "QUARANTINED_AS_UNTRUSTED_DATA",
+                            },
                         )
 
 
@@ -394,21 +387,19 @@ class AgentReasoningService:
                     tc.tool_name,
                     json.dumps(tc.arguments),
                 )
-                audit_event_sink.record_agent_event(
-                    AgentTraceEvent(
-                        event_type=AgentEventType.TOOL_REQUESTED,
-                        requester=request.requester,
-                        role=request.role,
-                        details={"tool_name": tc.tool_name, "arguments": tc.arguments},
-                    )
+                record_agent_trace(
+                    AgentEventType.TOOL_REQUESTED,
+                    {"tool_name": tc.tool_name, "arguments": tc.arguments},
                 )
 
+                tool_params = dict(tc.arguments)
+                tool_params["run_id"] = run_id
                 tool_invoc_req = ToolInvocationRequest(
                     requester=request.requester,
                     role=request.role,
                     tool_name=tc.tool_name,
                     classification=request.classification,
-                    parameters=tc.arguments,
+                    parameters=tool_params,
                     has_approval=request.has_approval,
                 )
 
@@ -430,17 +421,13 @@ class AgentReasoningService:
                     exec_result.decision.policy_id or "NONE",
                     exec_result.decision.reason,
                 )
-                audit_event_sink.record_agent_event(
-                    AgentTraceEvent(
-                        event_type=AgentEventType.POLICY_EVALUATED,
-                        requester=request.requester,
-                        role=request.role,
-                        details={
-                            "tool_name": tc.tool_name,
-                            "decision": exec_result.decision.decision.value,
-                            "reason": exec_result.decision.reason,
-                        },
-                    )
+                record_agent_trace(
+                    AgentEventType.POLICY_EVALUATED,
+                    {
+                        "tool_name": tc.tool_name,
+                        "decision": exec_result.decision.decision.value,
+                        "reason": exec_result.decision.reason,
+                    },
                 )
 
                 if exec_result.decision.decision == PolicyDecisionType.DENY:
@@ -463,13 +450,9 @@ class AgentReasoningService:
                     continue
 
                 logger.info("[TOOL_EXECUTED] Tool '%s' executed successfully.", tc.tool_name)
-                audit_event_sink.record_agent_event(
-                    AgentTraceEvent(
-                        event_type=AgentEventType.TOOL_EXECUTED,
-                        requester=request.requester,
-                        role=request.role,
-                        details={"tool_name": tc.tool_name, "event_id": exec_result.event_id},
-                    )
+                record_agent_trace(
+                    AgentEventType.TOOL_EXECUTED,
+                    {"tool_name": tc.tool_name, "event_id": exec_result.event_id},
                 )
 
                 if first_tool_result_data is None:
@@ -488,13 +471,9 @@ class AgentReasoningService:
                 evidence_set.add_tool_evidence(tool_evd)
 
                 logger.info("[EVIDENCE_CREATED] Tool Evidence ID: '%s' | Source: '%s'", tool_evd.evidence_id, tool_evd.source_reference)
-                audit_event_sink.record_agent_event(
-                    AgentTraceEvent(
-                        event_type=AgentEventType.EVIDENCE_CREATED,
-                        requester=request.requester,
-                        role=request.role,
-                        details={"evidence_id": tool_evd.evidence_id, "source_reference": tool_evd.source_reference},
-                    )
+                record_agent_trace(
+                    AgentEventType.EVIDENCE_CREATED,
+                    {"evidence_id": tool_evd.evidence_id, "source_reference": tool_evd.source_reference},
                 )
 
         # 8. Contradiction & Parameter Variance Detection
@@ -506,16 +485,12 @@ class AgentReasoningService:
 
         # 10. Independent Verification Engine Execution
         logger.info("[VERIFICATION_STARTED] Commencing independent deterministic verification checks.")
-        audit_event_sink.record_agent_event(
-            AgentTraceEvent(
-                event_type=AgentEventType.VERIFICATION_STARTED,
-                requester=request.requester,
-                role=request.role,
-                details={
-                    "evidence_count": len(evidence_set.all_evidence),
-                    "calculations_count": len(calculations),
-                },
-            )
+        record_agent_trace(
+            AgentEventType.VERIFICATION_STARTED,
+            {
+                "evidence_count": len(evidence_set.all_evidence),
+                "calculations_count": len(calculations),
+            },
         )
 
         t_vf_start = time.perf_counter()
@@ -537,17 +512,13 @@ class AgentReasoningService:
                 chk.status.value,
                 chk.description,
             )
-            audit_event_sink.record_agent_event(
-                AgentTraceEvent(
-                    event_type=AgentEventType.VERIFICATION_CHECK,
-                    requester=request.requester,
-                    role=request.role,
-                    details={
-                        "check_type": chk.check_type,
-                        "status": chk.status.value,
-                        "description": chk.description,
-                    },
-                )
+            record_agent_trace(
+                AgentEventType.VERIFICATION_CHECK,
+                {
+                    "check_type": chk.check_type,
+                    "status": chk.status.value,
+                    "description": chk.description,
+                },
             )
 
         logger.info(
@@ -555,16 +526,12 @@ class AgentReasoningService:
             verification_result.status.value,
             verification_result.summary,
         )
-        audit_event_sink.record_agent_event(
-            AgentTraceEvent(
-                event_type=AgentEventType.VERIFICATION_COMPLETED,
-                requester=request.requester,
-                role=request.role,
-                details={
-                    "status": verification_result.status.value,
-                    "summary": verification_result.summary,
-                },
-            )
+        record_agent_trace(
+            AgentEventType.VERIFICATION_COMPLETED,
+            {
+                "status": verification_result.status.value,
+                "summary": verification_result.summary,
+            },
         )
 
         # 11. Handle Policy Denial Outcome
@@ -575,13 +542,9 @@ class AgentReasoningService:
                 else "Execution blocked by sovereign policy."
             )
             logger.info("[AGENT_FINAL_RESPONSE] Blocked by policy: %s", first_denial_reason)
-            audit_event_sink.record_agent_event(
-                AgentTraceEvent(
-                    event_type=AgentEventType.AGENT_FINAL_RESPONSE,
-                    requester=request.requester,
-                    role=request.role,
-                    details={"status": AgentQueryStatus.POLICY_DENIED.value, "reason": first_denial_reason},
-                )
+            record_agent_trace(
+                AgentEventType.AGENT_FINAL_RESPONSE,
+                {"status": AgentQueryStatus.POLICY_DENIED.value, "reason": first_denial_reason},
             )
             return AgentQueryResponse(
                 query=request.query,
@@ -599,6 +562,9 @@ class AgentReasoningService:
                 policy_decision=evidence_set.policy_decisions[0] if evidence_set.policy_decisions else None,
                 tool_result=None,
                 evidence=None,
+                scenario_id=scenario_id,
+                run_id=run_id,
+                execution_state="COMPLETED",
                 timing={
                     "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
                     "planning_duration_ms": round(planning_duration_ms, 2),
@@ -628,6 +594,9 @@ class AgentReasoningService:
                 policy_decision=evidence_set.policy_decisions[0] if evidence_set.policy_decisions else None,
                 tool_result=None,
                 evidence=None,
+                scenario_id=scenario_id,
+                run_id=run_id,
+                execution_state="FAILED",
                 timing={
                     "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
                     "planning_duration_ms": round(planning_duration_ms, 2),
@@ -727,17 +696,13 @@ class AgentReasoningService:
             )
 
         logger.info("[AGENT_FINAL_RESPONSE] Successfully synthesized grounded response.")
-        audit_event_sink.record_agent_event(
-            AgentTraceEvent(
-                event_type=AgentEventType.AGENT_FINAL_RESPONSE,
-                requester=request.requester,
-                role=request.role,
-                details={
-                    "status": AgentQueryStatus.SUCCESS.value,
-                    "evidence_count": len(evidence_set.all_evidence),
-                    "verification_status": verification_result.status.value,
-                },
-            )
+        record_agent_trace(
+            AgentEventType.AGENT_FINAL_RESPONSE,
+            {
+                "status": AgentQueryStatus.SUCCESS.value,
+                "evidence_count": len(evidence_set.all_evidence),
+                "verification_status": verification_result.status.value,
+            },
         )
 
         first_tool_evidence = evidence_set.tool_evidence[0] if evidence_set.tool_evidence else None
@@ -762,6 +727,9 @@ class AgentReasoningService:
             policy_decision=evidence_set.policy_decisions[0] if evidence_set.policy_decisions else None,
             tool_result=first_tool_result_data,
             evidence=primary_evidence,
+            scenario_id=scenario_id,
+            run_id=run_id,
+            execution_state="COMPLETED",
             timing={
                 "total_duration_ms": round(total_duration_ms, 2),
                 "planning_duration_ms": round(planning_duration_ms, 2),

@@ -35,6 +35,8 @@ class DemoScenarioMetadata(BaseModel):
 class DemoRunRequest(BaseModel):
     """Payload to execute an end-to-end industrial demo mission."""
     scenario: DemoScenarioId = Field(..., description="Scenario identifier to execute")
+    scenario_id: Optional[DemoScenarioId] = Field(default=None, description="Explicit scenario identifier alias")
+    run_id: Optional[str] = Field(default=None, description="Unique execution run identifier")
     role: Optional[Role] = Field(default=None, description="Optional override role")
     classification: Optional[DataClassification] = Field(default=None, description="Optional override clearance")
     deterministic: bool = Field(default=True, description="Enforce deterministic sovereign execution mode")
@@ -67,6 +69,9 @@ class DemoResetResponse(BaseModel):
 class DemoRunResponse(AgentQueryResponse):
     """Structured response for M8 UI containing complete auditable demo trajectory."""
     scenario: DemoScenarioId
+    scenario_id: DemoScenarioId = Field(..., description="Explicit scenario identifier")
+    run_id: str = Field(..., description="Unique execution run identifier")
+    execution_state: str = Field(default="COMPLETED", description="Current execution state")
     scenario_title: str
     execution_phases: List[str] = Field(default_factory=list)
     audit_events: List[Dict[str, Any]] = Field(default_factory=list)

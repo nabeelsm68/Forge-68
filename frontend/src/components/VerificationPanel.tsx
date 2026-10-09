@@ -76,23 +76,42 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     },
   ];
 
-  const activeChecks = verification?.checks && verification.checks.length > 0
+  if (!verification) {
+    return (
+      <EnamelSurface variant="base" padding="spacious">
+        <div style={{ textAlign: "center", padding: "40px 20px" }}>
+          <BrassLabel variant="outline">INDEPENDENT VERIFICATION GATEWAY</BrassLabel>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: "24px", color: "var(--ink)", marginTop: 12, marginBottom: 8, fontWeight: 500 }}>
+            No Verification Results For Current Session
+          </h2>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: "14px", color: "var(--ink-2)", maxWidth: "54ch", margin: "0 auto" }}>
+            Execute an industrial scenario in the AI Workspace to evaluate the 7 independent deterministic checks against real evidence records.
+          </p>
+        </div>
+      </EnamelSurface>
+    );
+  }
+
+  const activeChecks = verification.checks && verification.checks.length > 0
     ? verification.checks.map((chk) => {
         const matchingBaseline = baselineChecks.find((b) => b.check_name === chk.check_type);
+        const detailsStr = chk.details && Object.keys(chk.details).length > 0
+          ? JSON.stringify(chk.details)
+          : matchingBaseline?.details || `Evidence items: ${chk.evidence_ids?.length || 0}`;
+
         return {
           check_name: chk.check_type,
           plainTitle: matchingBaseline?.plainTitle || chk.check_type.replace(/_/g, " "),
           title: matchingBaseline?.title || chk.check_type.replace(/_/g, " "),
           status: chk.status,
           description: chk.description,
-          details: matchingBaseline?.details || `Evidence items: ${chk.evidence_ids?.length || 0}`,
+          details: detailsStr,
         };
       })
-    : baselineChecks;
+    : [];
 
-  const currentStatus = verification?.status || "REVIEW_REQUIRED";
-  const summaryText = verification?.summary ||
-    "VERIFIED (7/7 checks passed). Supported by 4 multi-source evidence records and 2 deterministic calculations. Parameter variance (+1.8 bar) detected; human engineering review required before next shift.";
+  const currentStatus = verification.status || "REVIEW_REQUIRED";
+  const summaryText = verification.summary || "Independent verification evaluation complete.";
 
   const toggleCheck = (name: string) => {
     setExpandedCheckName((prev) => (prev === name ? null : name));

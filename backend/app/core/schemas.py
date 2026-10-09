@@ -191,6 +191,8 @@ class AgentQueryRequest(BaseModel):
     has_approval: bool = Field(default=False, description="Whether human/supervisor approval is present")
     image_path: Optional[str] = Field(default=None, description="Optional path to local engineering image for multimodal reasoning")
     image_base64: Optional[str] = Field(default=None, description="Optional base64 encoded image for multimodal reasoning")
+    scenario_id: Optional[str] = Field(default=None, description="Explicit scenario identifier for traceability")
+    run_id: Optional[str] = Field(default=None, description="Unique execution run identifier")
 
 
 class AgentQueryResponse(BaseModel):
@@ -206,7 +208,9 @@ class AgentQueryResponse(BaseModel):
     evidence_set: Optional[EvidenceSet] = None
     verification: Optional[VerificationResult] = None
     execution_event_id: Optional[str] = None
-
+    scenario_id: Optional[str] = Field(default=None, description="Explicit scenario identifier")
+    run_id: Optional[str] = Field(default=None, description="Unique execution run identifier")
+    execution_state: str = Field(default="COMPLETED", description="Current execution state")
 
     # Milestone 3 backward compatibility fields
     tool_call: Optional[Dict[str, Any]] = None
