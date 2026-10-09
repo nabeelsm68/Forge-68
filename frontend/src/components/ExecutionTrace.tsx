@@ -4,12 +4,14 @@ import {
   EnamelSurface,
   VerdictBadge,
 } from "@/components/primitives";
+import { useTranslation } from "@/lib/i18n";
 
 interface ExecutionTraceProps {
   response: AgentQueryResponse;
 }
 
 export function ExecutionTrace({ response }: ExecutionTraceProps) {
+  const { t } = useTranslation();
   const plan = response.agent_plan || response.plan;
   const policyDecisions = response.policy_decisions || [];
   const knowledgeEvidence = response.evidence_set?.knowledge_evidence || [];
@@ -42,7 +44,7 @@ export function ExecutionTrace({ response }: ExecutionTraceProps) {
               textTransform: "uppercase",
             }}
           >
-            Forensic Execution Trace
+            {t("traceTitle")}
           </span>
           <span
             style={{
@@ -55,7 +57,7 @@ export function ExecutionTrace({ response }: ExecutionTraceProps) {
               border: "1px solid var(--line)",
             }}
           >
-            Deterministic Lifecycle
+            {t("traceSubtitle")}
           </span>
         </div>
 
@@ -67,7 +69,7 @@ export function ExecutionTrace({ response }: ExecutionTraceProps) {
               color: "var(--ink-3)",
             }}
           >
-            Event ID: <strong style={{ color: "var(--ink-2)" }}>{response.execution_event_id}</strong>
+            {t("traceEventId")} <strong style={{ color: "var(--ink-2)" }}>{response.execution_event_id}</strong>
           </span>
         )}
       </div>

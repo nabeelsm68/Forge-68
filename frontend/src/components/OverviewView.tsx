@@ -19,12 +19,14 @@ import {
   StatusIndicator,
   Divider,
 } from "@/components/primitives";
+import { useTranslation } from "@/lib/i18n";
 
 interface OverviewViewProps {
   onNavigateToWorkspace: () => void;
 }
 
 export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
+  const { t } = useTranslation();
   const [sovereignty, setSovereignty] = useState<SovereigntyStatusResponse | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [audit, setAudit] = useState<AuditEventsResponse | null>(null);
@@ -57,7 +59,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 20 }}>
           <div style={{ maxWidth: 780 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-              <BrassLabel variant="outline">MISSION CASE · R-204-REV4</BrassLabel>
+              <BrassLabel variant="outline">{t("overviewCaseBadge")}</BrassLabel>
               <span
                 style={{
                   fontFamily: "var(--font-mono)",
@@ -66,7 +68,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
                   letterSpacing: "0.06em",
                 }}
               >
-                HYDROCRACKER LOOP · FACILITY UNIT 4
+                {t("overviewFacilityUnit")}
               </span>
               <span
                 style={{
@@ -78,7 +80,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
                   borderRadius: "var(--radius-sm)",
                 }}
               >
-                CONFIDENTIAL
+                {t("overviewConfidential")}
               </span>
             </div>
 
@@ -93,7 +95,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
                 marginBottom: 10,
               }}
             >
-              Reactor R-204 Pressure Variance Investigation
+              {t("overviewHeading")}
             </h1>
 
             <p
@@ -104,9 +106,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
                 color: "var(--ink-2)",
               }}
             >
-              Autonomous industrial investigation synthesizing operating pressure telemetry,
-              ultrasonic shell wall inspection, and plant operating procedures.
-              All reasoning is sovereign, tool actuation is policy-gated, and conclusions are mathematically verified.
+              {t("overviewSubheading")}
             </p>
           </div>
 
@@ -117,7 +117,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
               className="btn-brass-primary"
               style={{ whiteSpace: "nowrap" }}
             >
-              Open AI Workspace ▶
+              {t("overviewOpenWorkspace")}
             </button>
           </div>
         </div>
@@ -143,7 +143,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
                 textTransform: "uppercase",
               }}
             >
-              Primary Operational Parameters · Reactor R-204
+              {t("overviewOperationalParams")}
             </span>
             <span
               style={{
@@ -152,7 +152,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
                 color: "var(--ink-3)",
               }}
             >
-              Telemetry Point: PI-204
+              {t("overviewTelemetryPoint")}
             </span>
           </div>
 
@@ -170,24 +170,24 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
             <Metric
               value="33.0"
               unit="bar"
-              label="Current Condition"
-              subtext="Analog indicator PI-204"
+              label={t("overviewCurrentCondition")}
+              subtext={t("overviewCurrentConditionSub")}
               highlight={true}
             />
             <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 16 }}>
               <Metric
                 value="31.2"
                 unit="bar"
-                label="Normal Baseline"
-                subtext="SOP-R204 Rev C §3.2"
+                label={t("overviewNormalBaseline")}
+                subtext={t("overviewNormalBaselineSub")}
               />
             </div>
             <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 16 }}>
               <Metric
                 value="+1.8"
                 unit="bar"
-                label="Observed Deviation"
-                subtext="Above nominal limit"
+                label={t("overviewObservedDeviation")}
+                subtext={t("overviewObservedDeviationSub")}
                 highlight={true}
               />
             </div>
@@ -195,16 +195,16 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
               <Metric
                 value="33.5"
                 unit="bar"
-                label="High Alarm Limit"
-                subtext="Margin: 0.5 bar remaining"
+                label={t("overviewHighAlarmLimit")}
+                subtext={t("overviewHighAlarmLimitSub")}
               />
             </div>
             <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 16 }}>
               <Metric
                 value="35.0"
                 unit="bar"
-                label="Trip Threshold"
-                subtext="Safety interlock shutdown"
+                label={t("overviewTripThreshold")}
+                subtext={t("overviewTripThresholdSub")}
               />
             </div>
           </div>
@@ -231,7 +231,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
                 letterSpacing: "0.04em",
               }}
             >
-              01 · EVIDENCE DOSSIER
+              {t("overviewLayer1Title")}
             </span>
             <span
               style={{
@@ -240,7 +240,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
                 color: "var(--ink-3)",
               }}
             >
-              {knowledge?.total_available || 5} Records Indexed
+              {knowledge?.total_available || 5} {t("overviewRecordsIndexed")}
             </span>
           </div>
 
@@ -253,12 +253,11 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
               fontWeight: 500,
             }}
           >
-            Multi-Source Corroboration
+            {t("overviewLayer1Heading")}
           </h3>
 
           <p style={{ fontFamily: "var(--font-ui)", fontSize: "13.5px", color: "var(--ink-2)", lineHeight: 1.5, marginBottom: 14 }}>
-            Case determinations are grounded in four independent evidence modalities:
-            plant operating procedures, ultrasonic inspection scans, telemetry feeds, and deterministic calculations.
+            {t("overviewLayer1Desc")}
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -307,7 +306,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
                 letterSpacing: "0.04em",
               }}
             >
-              02 · INDEPENDENT VERIFICATION
+              {t("overviewLayer2Title")}
             </span>
             <span
               style={{
@@ -316,7 +315,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
                 color: "var(--sage)",
               }}
             >
-              7 / 7 Checks Active
+              {t("overviewChecksActive")}
             </span>
           </div>
 
@@ -329,12 +328,11 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
               fontWeight: 500,
             }}
           >
-            Non-LLM Verification Spine
+            {t("overviewLayer2Heading")}
           </h3>
 
           <p style={{ fontFamily: "var(--font-ui)", fontSize: "13.5px", color: "var(--ink-2)", lineHeight: 1.5, marginBottom: 14 }}>
-            The AI model proposes conclusions, but never verifies its own output.
-            A separate deterministic Python verification engine executes discrete checks before operator delivery.
+            {t("overviewLayer2Desc")}
           </p>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -389,7 +387,7 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
                 letterSpacing: "0.04em",
               }}
             >
-              03 · CONTROLS & BOUNDARIES
+              {t("overviewLayer3Title")}
             </span>
             <StatusIndicator status="verified" label="Enforced" />
           </div>
@@ -403,33 +401,32 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
               fontWeight: 500,
             }}
           >
-            Default-Deny Policy Gateway
+            {t("overviewLayer3Heading")}
           </h3>
 
           <p style={{ fontFamily: "var(--font-ui)", fontSize: "13.5px", color: "var(--ink-2)", lineHeight: 1.5, marginBottom: 14 }}>
-            Every tool invocation, knowledge chunk access, and telemetry query is evaluated against persona clearance and role authority.
-            Untrusted inputs are quarantined as inert data.
+            {t("overviewLayer3Desc")}
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, fontFamily: "var(--font-mono)", fontSize: "12px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 8px", background: "var(--bg-0)", borderRadius: "var(--radius-sm)", border: "1px solid var(--line)" }}>
-              <span style={{ color: "var(--ink-3)" }}>Gateway Policy:</span>
-              <span style={{ color: "var(--coral-text)", fontWeight: 600 }}>DEFAULT-DENY (FAIL-CLOSED)</span>
+              <span style={{ color: "var(--ink-3)" }}>{t("overviewGatewayPolicy")}</span>
+              <span style={{ color: "var(--coral-text)", fontWeight: 600 }}>{t("overviewDefaultDenyVal")}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 8px", background: "var(--bg-0)", borderRadius: "var(--radius-sm)", border: "1px solid var(--line)" }}>
-              <span style={{ color: "var(--ink-3)" }}>Reasoning Runtime:</span>
+              <span style={{ color: "var(--ink-3)" }}>{t("overviewReasoningRuntime")}</span>
               <span style={{ color: "var(--ink)" }}>
                 {sovereignty?.model_provider?.default_model || "qwen3:8b (Ollama Loopback)"} ({health?.model_provider_online ? "Ready" : "Offline"})
               </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 8px", background: "var(--bg-0)", borderRadius: "var(--radius-sm)", border: "1px solid var(--line)" }}>
-              <span style={{ color: "var(--ink-3)" }}>Outside AI Services:</span>
-              <span style={{ color: "var(--sage)", fontWeight: 600 }}>NONE CONFIGURED</span>
+              <span style={{ color: "var(--ink-3)" }}>{t("overviewOutsideAI")}</span>
+              <span style={{ color: "var(--sage)", fontWeight: 600 }}>{t("overviewNoneConfigured")}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 8px", background: "var(--bg-0)", borderRadius: "var(--radius-sm)", border: "1px solid var(--line)" }}>
-              <span style={{ color: "var(--ink-3)" }}>Audit Logging:</span>
+              <span style={{ color: "var(--ink-3)" }}>{t("overviewAuditLogging")}</span>
               <span style={{ color: "var(--ink)" }}>
-                {((audit?.total_agent_events || 0) + (audit?.tool_events?.length || 0))} Local append-only events
+                {((audit?.total_agent_events || 0) + (audit?.tool_events?.length || 0))} {t("overviewAppendOnlyEvents")}
               </span>
             </div>
           </div>

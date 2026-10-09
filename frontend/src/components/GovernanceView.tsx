@@ -8,12 +8,14 @@ import {
   fetchTools,
 } from "@/lib/api";
 import { EnamelSurface, SectionHeader, BrassLabel } from "./primitives";
+import { useTranslation } from "@/lib/i18n";
 
 interface GovernanceViewProps {
   role?: string;
 }
 
 export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
+  const { t } = useTranslation();
   const [securityReport, setSecurityReport] = useState<SecurityBoundaryReport | null>(null);
   const [tools, setTools] = useState<ToolMetadata[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -88,23 +90,23 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
   ];
 
   const getStatusBadge = (status: string) => {
-    if (status.includes("✓ Allowed")) {
+    if (status.includes("✓ Allowed") || status.includes("Allowed") || status.includes("अनुमत") || status.includes("ಅನುಮತಿಸಲಾಗಿದೆ")) {
       return (
         <span style={{ color: "var(--sage)", background: "rgba(156, 195, 168, 0.1)", border: "1px solid var(--sage)", padding: "3px 8px", borderRadius: "var(--radius-pill)", fontSize: "11px", fontWeight: 600 }}>
-          ✓ Allowed
+          {t("govStatusAllowed")}
         </span>
       );
     }
-    if (status.includes("⚠ Approval required")) {
+    if (status.includes("⚠ Approval required") || status.includes("Approval") || status.includes("अनुमोदन") || status.includes("ಅನುಮೋದನೆ")) {
       return (
         <span style={{ color: "var(--brass)", background: "rgba(200, 161, 90, 0.1)", border: "1px solid var(--brass)", padding: "3px 8px", borderRadius: "var(--radius-pill)", fontSize: "11px", fontWeight: 600 }}>
-          ⚠ Approval required
+          {t("govStatusApproval")}
         </span>
       );
     }
     return (
       <span style={{ color: "var(--pewter)", background: "rgba(141, 180, 214, 0.08)", border: "1px solid var(--line-strong)", padding: "3px 8px", borderRadius: "var(--radius-pill)", fontSize: "11px", fontWeight: 600 }}>
-        ✕ Blocked
+        {t("govStatusBlocked")}
       </span>
     );
   };
@@ -154,7 +156,7 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
             letterSpacing: "-0.01em",
           }}
         >
-          Who can do what
+          {t("govTitle")}
         </h1>
 
         <p
@@ -166,7 +168,7 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
             maxWidth: "68ch",
           }}
         >
-          Controls decide what AI and operators are allowed to do. Every action is checked against policy before any tool or actuator can execute.
+          {t("govSubtitle")}
         </p>
       </div>
 
@@ -224,12 +226,12 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-ui)", fontSize: "14px", textAlign: "left" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--line-strong)", color: "var(--ink-3)" }}>
-                <th style={{ padding: "12px 14px", fontWeight: 600 }}>Role</th>
-                <th style={{ padding: "12px 14px", fontWeight: 600 }}>Read</th>
-                <th style={{ padding: "12px 14px", fontWeight: 600 }}>Investigate</th>
-                <th style={{ padding: "12px 14px", fontWeight: 600 }}>Actuate</th>
-                <th style={{ padding: "12px 14px", fontWeight: 600 }}>Admin</th>
-                <th style={{ padding: "12px 14px", fontWeight: 600 }}>Permissions Summary</th>
+                <th style={{ padding: "12px 14px", fontWeight: 600 }}>{t("govColRole")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 600 }}>{t("govColRead")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 600 }}>{t("govColInvestigate")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 600 }}>{t("govColActuate")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 600 }}>{t("govColAdmin")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 600 }}>{t("govColSummary")}</th>
               </tr>
             </thead>
             <tbody>

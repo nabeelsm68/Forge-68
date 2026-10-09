@@ -13,6 +13,7 @@ import {
   BrassLabel,
   Divider,
 } from "@/components/primitives";
+import { useTranslation } from "@/lib/i18n";
 
 type EventFilter = "ALL" | "AGENT" | "TOOL" | "POLICY" | "VERIFICATION" | "KNOWLEDGE";
 
@@ -38,6 +39,7 @@ function formatISTTimestamp(isoString: string): string {
 }
 
 export function AuditView() {
+  const { t } = useTranslation();
   const [auditData, setAuditData] = useState<AuditEventsResponse | null>(null);
   const [filter, setFilter] = useState<EventFilter>("ALL");
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
@@ -261,12 +263,11 @@ export function AuditView() {
             </div>
 
             <h1 style={{ fontFamily: "var(--font-display)", fontSize: "38px", color: "var(--ink)", fontWeight: 500, lineHeight: 1.1 }}>
-              What did FORGE do?
+              {t("auditTitle")}
             </h1>
 
             <p style={{ fontFamily: "var(--font-ui)", fontSize: "15px", color: "var(--ink-2)", marginTop: 6, maxWidth: 680 }}>
-              A readable chronological activity timeline recording every question, plant record lookup, permission check,
-              tool execution, and independent verification check.
+              {t("auditSubtitle")}
             </p>
           </div>
 
@@ -277,7 +278,7 @@ export function AuditView() {
               className="btn-brass-secondary"
               style={{ fontSize: "12px", padding: "6px 14px", cursor: isResetting ? "not-allowed" : "pointer" }}
             >
-              {isResetting ? "Resetting..." : "↺ Reset Transient Audit State"}
+              {isResetting ? t("auditResetting") : t("auditResetButton")}
             </button>
             <button
               onClick={loadAuditData}
@@ -470,7 +471,15 @@ export function AuditView() {
           </div>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {(["ALL", "AGENT", "KNOWLEDGE", "POLICY", "TOOL", "VERIFICATION"] as const).map((cat) => {
+            {[
+              { id: "ALL", label: t("auditFilterAll") },
+              { id: "AGENT", label: t("auditFilterAgent") },
+              { id: "KNOWLEDGE", label: t("auditFilterKnowledge") },
+              { id: "POLICY", label: t("auditFilterPolicy") },
+              { id: "TOOL", label: t("auditFilterTool") },
+              { id: "VERIFICATION", label: t("auditFilterVerification") },
+            ].map((catItem) => {
+              const cat = catItem.id as EventFilter;
               const isSelected = filter === cat;
               return (
                 <button
@@ -488,7 +497,7 @@ export function AuditView() {
                     transition: "all var(--dur-fast) var(--ease-out)",
                   }}
                 >
-                  {cat}
+                  {catItem.label}
                 </button>
               );
             })}
@@ -649,10 +658,10 @@ export function AuditView() {
         ) : (
           <div style={{ padding: "48px 20px", textAlign: "center", color: "var(--ink-3)" }}>
             <p style={{ fontFamily: "var(--font-display)", fontSize: "20px", color: "var(--ink-2)", marginBottom: 6 }}>
-              No audit events recorded for current filter
+              {t("auditEmptyTitle")}
             </p>
             <p style={{ fontFamily: "var(--font-ui)", fontSize: "13px" }}>
-              Run queries in the AI Workspace or execute tool actions to observe real-time audit event append operations.
+              {t("auditEmptyDesc")}
             </p>
           </div>
         )}

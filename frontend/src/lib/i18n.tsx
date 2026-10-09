@@ -162,6 +162,11 @@ export interface TranslationDictionary {
   knowledgeUploadModalClass: string;
   knowledgeUploadModalSubmit: string;
   knowledgeUploadModalClose: string;
+  knowledgeSynthesisTitle: string;
+  knowledgeSynthesisSubtitle: string;
+  knowledgePrimarySource: string;
+  knowledgeOnPremData: string;
+  knowledgeRetrievedPassages: string;
 
   // Voice Assistant
   voiceModalTitle: string;
@@ -181,9 +186,143 @@ export interface TranslationDictionary {
   voiceRetry: string;
   voiceClose: string;
 
+  // Read Aloud Controls & States
+  readAloudLabel: string;
+  readAloudStop: string;
+  readAloudPlaying: string;
+  readAloudUnavailable: string;
+
   // Reports
   reportExportSuccess: string;
   reportExportError: string;
+
+  // Overview View
+  overviewCaseBadge: string;
+  overviewFacilityUnit: string;
+  overviewConfidential: string;
+  overviewHeading: string;
+  overviewSubheading: string;
+  overviewOpenWorkspace: string;
+  overviewOperationalParams: string;
+  overviewTelemetryPoint: string;
+  overviewCurrentCondition: string;
+  overviewCurrentConditionSub: string;
+  overviewNormalBaseline: string;
+  overviewNormalBaselineSub: string;
+  overviewObservedDeviation: string;
+  overviewObservedDeviationSub: string;
+  overviewHighAlarmLimit: string;
+  overviewHighAlarmLimitSub: string;
+  overviewTripThreshold: string;
+  overviewTripThresholdSub: string;
+  overviewLayer1Title: string;
+  overviewLayer1Heading: string;
+  overviewLayer1Desc: string;
+  overviewRecordsIndexed: string;
+  overviewLayer2Title: string;
+  overviewLayer2Heading: string;
+  overviewLayer2Desc: string;
+  overviewChecksActive: string;
+  overviewLayer3Title: string;
+  overviewLayer3Heading: string;
+  overviewLayer3Desc: string;
+  overviewGatewayPolicy: string;
+  overviewReasoningRuntime: string;
+  overviewOutsideAI: string;
+  overviewAuditLogging: string;
+  overviewDefaultDenyVal: string;
+  overviewNoneConfigured: string;
+  overviewAppendOnlyEvents: string;
+
+  // Evidence Panel
+  evidenceDossierTitle: string;
+  evidenceDossierSubtitle: string;
+  evidenceDossierDesc: string;
+  evidenceFilterAll: string;
+  evidenceFilterDoc: string;
+  evidenceFilterTool: string;
+  evidenceFilterVisual: string;
+  evidenceFilterCalc: string;
+  evidenceEmptyTitle: string;
+  evidenceEmptyDesc: string;
+
+  // Verification Panel
+  verificationGatewayTitle: string;
+  verificationGatewaySubtitle: string;
+  verificationGatewayDesc: string;
+  verificationEmptyTitle: string;
+  verificationEmptyDesc: string;
+  verificationCheckProvTitle: string;
+  verificationCheckCompTitle: string;
+  verificationCheckPolicyTitle: string;
+  verificationCheckClassTitle: string;
+  verificationCheckParamTitle: string;
+  verificationCheckCalcTitle: string;
+  verificationCheckGroundTitle: string;
+
+  // Execution Trace
+  traceTitle: string;
+  traceSubtitle: string;
+  traceEventId: string;
+  tracePhase1: string;
+  tracePhase1Desc: string;
+  tracePhase2: string;
+  tracePhase2Desc: string;
+  tracePhase3: string;
+  tracePhase3Desc: string;
+  tracePhase4: string;
+  tracePhase4Desc: string;
+  tracePhase5: string;
+  tracePhase5Desc: string;
+
+  // Governance View
+  govTitle: string;
+  govSubtitle: string;
+  govActivePersona: string;
+  govPermissionMatrixTitle: string;
+  govColRole: string;
+  govColRead: string;
+  govColInvestigate: string;
+  govColActuate: string;
+  govColAdmin: string;
+  govColSummary: string;
+  govStatusAllowed: string;
+  govStatusApproval: string;
+  govStatusBlocked: string;
+  govToolSandboxTitle: string;
+  govToolReadOnly: string;
+  govToolActuation: string;
+
+  // Audit View
+  auditTitle: string;
+  auditSubtitle: string;
+  auditResetButton: string;
+  auditResetting: string;
+  auditFilterAll: string;
+  auditFilterAgent: string;
+  auditFilterTool: string;
+  auditFilterPolicy: string;
+  auditFilterVerification: string;
+  auditFilterKnowledge: string;
+  auditEmptyTitle: string;
+  auditEmptyDesc: string;
+  auditTotalEvents: string;
+
+  // Sovereignty View
+  sovTitle: string;
+  sovSubtitle: string;
+  sovCardLocalAITitle: string;
+  sovCardLocalKnowledgeTitle: string;
+  sovCardLocalToolsTitle: string;
+  sovCardVerificationTitle: string;
+  sovCardAuditTitle: string;
+  sovModelRouterTitle: string;
+  sovRouterColTask: string;
+  sovRouterColModel: string;
+  sovRouterColVram: string;
+  sovRouterColRationale: string;
+  sovNetworkAuditTitle: string;
+  sovZeroCloudCalls: string;
 }
 
 export const translations: Record<Language, TranslationDictionary> = {
@@ -345,6 +484,11 @@ export const translations: Record<Language, TranslationDictionary> = {
     knowledgeUploadModalClass: "Document Classification:",
     knowledgeUploadModalSubmit: "Ingest & Index Document",
     knowledgeUploadModalClose: "Close",
+    knowledgeSynthesisTitle: "TOP RETRIEVED SYNTHESIS",
+    knowledgeSynthesisSubtitle: "Synthesized from private plant records",
+    knowledgePrimarySource: "Primary Source:",
+    knowledgeOnPremData: "✓ 100% on-premise local data",
+    knowledgeRetrievedPassages: "RETRIEVED PASSAGES",
 
     // Voice Assistant
     voiceModalTitle: "Sovereign Voice Assistant",
@@ -358,15 +502,149 @@ export const translations: Record<Language, TranslationDictionary> = {
     voiceUnavailableDesc: "FORGE strictly forbids Google, Apple, or OpenAI cloud speech APIs. To enable local STT, install vosk or whisper.cpp on this host. Text console is 100% operational.",
     voiceStartListening: "🎙 Start Listening",
     voiceStopListening: "⏹ Stop & Transcribe",
-    voiceTransferQuery: "Transfer to Query Field",
-    voiceExecuteQuery: "Review & Execute Loop ▶",
+    voiceTransferQuery: "Transfer to Question Field",
+    voiceExecuteQuery: "Review & Run Investigation Loop ▶",
     voiceStopSpeaking: "🔇 Stop Speaking",
     voiceRetry: "↺ Retry",
     voiceClose: "Close",
 
+    // Read Aloud Controls & States
+    readAloudLabel: "Read aloud",
+    readAloudStop: "Stop playback",
+    readAloudPlaying: "Reading aloud...",
+    readAloudUnavailable: "Local voice unavailable for {lang}",
+
     // Reports
     reportExportSuccess: "Mission Word report exported successfully.",
     reportExportError: "Failed to generate Word report.",
+
+    // Overview View
+    overviewCaseBadge: "MISSION CASE · R-204-REV4",
+    overviewFacilityUnit: "HYDROCRACKER LOOP · FACILITY UNIT 4",
+    overviewConfidential: "CONFIDENTIAL",
+    overviewHeading: "Reactor R-204 Pressure Variance Investigation",
+    overviewSubheading: "Autonomous industrial investigation synthesizing operating pressure telemetry, ultrasonic shell wall inspection, and plant operating procedures. All reasoning is sovereign, tool actuation is policy-gated, and conclusions are mathematically verified.",
+    overviewOpenWorkspace: "Open AI Workspace ▶",
+    overviewOperationalParams: "Primary Operational Parameters · Reactor R-204",
+    overviewTelemetryPoint: "Telemetry Point: PI-204",
+    overviewCurrentCondition: "Current Condition",
+    overviewCurrentConditionSub: "Analog indicator PI-204",
+    overviewNormalBaseline: "Normal Baseline",
+    overviewNormalBaselineSub: "SOP-R204 Rev C §3.2",
+    overviewObservedDeviation: "Observed Deviation",
+    overviewObservedDeviationSub: "Above nominal limit",
+    overviewHighAlarmLimit: "High Alarm Limit",
+    overviewHighAlarmLimitSub: "Margin: 0.5 bar remaining",
+    overviewTripThreshold: "Trip Threshold",
+    overviewTripThresholdSub: "Safety interlock shutdown",
+    overviewLayer1Title: "01 · EVIDENCE DOSSIER",
+    overviewLayer1Heading: "Multi-Source Corroboration",
+    overviewLayer1Desc: "Case determinations are grounded in four independent evidence modalities: plant operating procedures, ultrasonic inspection scans, telemetry feeds, and deterministic calculations.",
+    overviewRecordsIndexed: "Records Indexed",
+    overviewLayer2Title: "02 · INDEPENDENT VERIFICATION",
+    overviewLayer2Heading: "Non-LLM Verification Spine",
+    overviewLayer2Desc: "The AI model proposes conclusions, but never verifies its own output. A separate deterministic Python verification engine executes discrete checks before operator delivery.",
+    overviewChecksActive: "7 / 7 Checks Active",
+    overviewLayer3Title: "03 · CONTROLS & BOUNDARIES",
+    overviewLayer3Heading: "Default-Deny Policy Gateway",
+    overviewLayer3Desc: "Every tool invocation, knowledge chunk access, and telemetry query is evaluated against persona clearance and role authority. Untrusted inputs are quarantined as inert data.",
+    overviewGatewayPolicy: "Gateway Policy:",
+    overviewReasoningRuntime: "Reasoning Runtime:",
+    overviewOutsideAI: "Outside AI Services:",
+    overviewAuditLogging: "Audit Logging:",
+    overviewDefaultDenyVal: "DEFAULT-DENY (FAIL-CLOSED)",
+    overviewNoneConfigured: "NONE CONFIGURED",
+    overviewAppendOnlyEvents: "Local append-only events",
+
+    // Evidence Panel
+    evidenceDossierTitle: "What supports this answer?",
+    evidenceDossierSubtitle: "MULTI-SOURCE EVIDENCE DOSSIER",
+    evidenceDossierDesc: "Every claim is tied to verifiable evidence: documented plant procedures, sandboxed tools, analog gauges, or deterministic math.",
+    evidenceFilterAll: "All Evidence",
+    evidenceFilterDoc: "Plant Procedures",
+    evidenceFilterTool: "Sensor Readings",
+    evidenceFilterVisual: "Gauges & Vision",
+    evidenceFilterCalc: "Independent Math",
+    evidenceEmptyTitle: "No Evidence Records Available",
+    evidenceEmptyDesc: "Evidence records are generated when an industrial inquiry or scenario is executed.",
+
+    // Verification Panel
+    verificationGatewayTitle: "INDEPENDENT VERIFICATION GATEWAY",
+    verificationGatewaySubtitle: "Why Trust This? (7 Deterministic Checks)",
+    verificationGatewayDesc: "A separate deterministic Python engine executes discrete verification checks before operator delivery. The LLM never verifies its own output.",
+    verificationEmptyTitle: "No Verification Results For Current Session",
+    verificationEmptyDesc: "Execute an industrial scenario in the AI Workspace to evaluate the independent deterministic checks against real evidence records.",
+    verificationCheckProvTitle: "Evidence Provenance & Integrity",
+    verificationCheckCompTitle: "Requirement & Evidence Completeness",
+    verificationCheckPolicyTitle: "Policy Gateway Compliance",
+    verificationCheckClassTitle: "Data Classification Boundary",
+    verificationCheckParamTitle: "Cross-Source Parameter Consistency",
+    verificationCheckCalcTitle: "Deterministic Math Validation",
+    verificationCheckGroundTitle: "Synthesis Grounding & Hallucination Gate",
+
+    // Execution Trace
+    traceTitle: "Forensic Execution Trace",
+    traceSubtitle: "Deterministic Lifecycle",
+    traceEventId: "Event ID:",
+    tracePhase1: "01 · REQUEST INGESTION & PARSING",
+    tracePhase1Desc: "Query received and classified into operational intent, target asset, and clearance boundaries.",
+    tracePhase2: "02 · POLICY GATEWAY EVALUATION",
+    tracePhase2Desc: "Requested tool actions evaluated against persona permissions and system fail-closed safety policy.",
+    tracePhase3: "03 · EVIDENCE RETRIEVAL & TOOL EXECUTION",
+    tracePhase3Desc: "Knowledge chunks retrieved and sandboxed tool executions performed inside isolated enclaves.",
+    tracePhase4: "04 · DETERMINISTIC VERIFICATION & VALIDATION",
+    tracePhase4Desc: "Non-LLM deterministic checks executed to verify math, provenance, completeness, and grounding.",
+    tracePhase5: "05 · DOSSIER SYNTHESIS & AUDIT EMISSION",
+    tracePhase5Desc: "Final answer formulated and appended to tamper-evident local audit bus.",
+
+    // Governance View
+    govTitle: "Who Can Do What · RBAC & Tool Gateway",
+    govSubtitle: "Every agent proposal is intercepted and governed before actuation. Control policies strictly decide what actions AI may propose.",
+    govActivePersona: "CURRENT ACTIVE PERSONA:",
+    govPermissionMatrixTitle: "Role Permission & Actuation Authority Matrix",
+    govColRole: "Role & Clearance",
+    govColRead: "Knowledge & Telemetry",
+    govColInvestigate: "Run Investigation",
+    govColActuate: "Plant Actuation",
+    govColAdmin: "Administration",
+    govColSummary: "Operational Boundary",
+    govStatusAllowed: "✓ Allowed",
+    govStatusApproval: "⚠ Approval required",
+    govStatusBlocked: "✕ Blocked",
+    govToolSandboxTitle: "Registered Industrial Tools & Boundary Handlers",
+    govToolReadOnly: "READ-ONLY",
+    govToolActuation: "ACTUATION (WRITE)",
+
+    // Audit View
+    auditTitle: "Tamper-Evident Audit Timeline",
+    auditSubtitle: "Append-only local event log recording every query, tool invocation, policy interception, and verification proof.",
+    auditResetButton: "↺ Reset Audit Events",
+    auditResetting: "Clearing Events...",
+    auditFilterAll: "All Events",
+    auditFilterAgent: "Agent Queries",
+    auditFilterTool: "Tool Invocations",
+    auditFilterPolicy: "Policy Interceptions",
+    auditFilterVerification: "Verification Proofs",
+    auditFilterKnowledge: "Knowledge Access",
+    auditEmptyTitle: "No Audit Events Recorded",
+    auditEmptyDesc: "All operations executed in the control plane will appear in this append-only chronological timeline.",
+    auditTotalEvents: "Total Recorded Events:",
+
+    // Sovereignty View
+    sovTitle: "Sovereignty & Air-Gap Enclave",
+    sovSubtitle: "Zero cloud dependencies, zero external AI calls, on-premise model execution, and deterministic hardware boundary isolation.",
+    sovCardLocalAITitle: "Local AI",
+    sovCardLocalKnowledgeTitle: "Local Knowledge",
+    sovCardLocalToolsTitle: "Local Tools",
+    sovCardVerificationTitle: "Verification",
+    sovCardAuditTitle: "Audit Log",
+    sovModelRouterTitle: "Task-Based Local Model Routing Matrix",
+    sovRouterColTask: "Task Type",
+    sovRouterColModel: "Assigned Local Model",
+    sovRouterColVram: "VRAM Profile",
+    sovRouterColRationale: "Routing Rationale",
+    sovNetworkAuditTitle: "Network Egress Diagnostic (Strict Zero Cloud)",
+    sovZeroCloudCalls: "Zero Cloud Calls Verified",
   },
 
   hi: {
@@ -527,6 +805,11 @@ export const translations: Record<Language, TranslationDictionary> = {
     knowledgeUploadModalClass: "दस्तावेज़ वर्गीकरण:",
     knowledgeUploadModalSubmit: "दस्तावेज़ शामिल करें व अनुक्रमित करें",
     knowledgeUploadModalClose: "बंद करें",
+    knowledgeSynthesisTitle: "शीर्ष प्राप्त संश्लेषण",
+    knowledgeSynthesisSubtitle: "निजी संयंत्र रिकॉर्ड से संश्लेषित",
+    knowledgePrimarySource: "प्राथमिक स्रोत:",
+    knowledgeOnPremData: "✓ 100% ऑन-प्रिमाइसेस स्थानीय डेटा",
+    knowledgeRetrievedPassages: "प्राप्त अंश",
 
     // Voice Assistant
     voiceModalTitle: "संप्रभु ध्वनि सहायक",
@@ -540,15 +823,149 @@ export const translations: Record<Language, TranslationDictionary> = {
     voiceUnavailableDesc: "FORGE Google, Apple या OpenAI क्लाउड वाक API को सख्ती से रोकता है। स्थानीय STT सक्षम करने के लिए इस होस्ट पर vosk या whisper.cpp स्थापित करें। टेक्स्ट कंसोल पूरी तरह कार्यशील है।",
     voiceStartListening: "🎙 सुनना शुरू करें",
     voiceStopListening: "⏹ रोकें और ट्रांसक्राइब करें",
-    voiceTransferQuery: "क्वेरी फ़ील्ड में भेजें",
-    voiceExecuteQuery: "समीक्षा करें और निष्पादित करें ▶",
+    voiceTransferQuery: "प्रश्न फ़ील्ड में स्थानांतरित करें",
+    voiceExecuteQuery: "समीक्षा करें और जांच लूप चलाएं ▶",
     voiceStopSpeaking: "🔇 बोलना बंद करें",
     voiceRetry: "↺ पुनः प्रयास करें",
     voiceClose: "बंद करें",
 
+    // Read Aloud Controls & States
+    readAloudLabel: "बोलकर सुनाएं",
+    readAloudStop: "प्लेबैक रोकें",
+    readAloudPlaying: "सुनाया जा रहा है...",
+    readAloudUnavailable: "{lang} के लिए स्थानीय आवाज उपलब्ध नहीं है",
+
     // Reports
     reportExportSuccess: "मिशन वर्ड रिपोर्ट सफलतापूर्वक निर्यात की गई।",
     reportExportError: "वर्ड रिपोर्ट बनाने में विफल।",
+
+    // Overview View
+    overviewCaseBadge: "अभियान केस · R-204-REV4",
+    overviewFacilityUnit: "हाइड्रोक्रैकर लूप · सुविधा इकाई 4",
+    overviewConfidential: "गोपनीय",
+    overviewHeading: "रिएक्टर R-204 दबाव विचरण जांच",
+    overviewSubheading: "परिचालन दबाव टेलीमेट्री, अल्ट्रासोनिक शैल दीवार निरीक्षण, और संयंत्र संचालन प्रक्रियाओं का संश्लेषण करने वाली स्वायत्त औद्योगिक जांच। सभी तर्क संप्रभु हैं, उपकरण संचालन नीति-नियंत्रित है, और निष्कर्ष गणितीय रूप से सत्यापित हैं।",
+    overviewOpenWorkspace: "AI कार्यक्षेत्र खोलें ▶",
+    overviewOperationalParams: "प्राथमिक परिचालन पैरामीटर · रिएक्टर R-204",
+    overviewTelemetryPoint: "टेलीमेट्री बिंदु: PI-204",
+    overviewCurrentCondition: "वर्तमान स्थिति",
+    overviewCurrentConditionSub: "एनालॉग सूचक PI-204",
+    overviewNormalBaseline: "सामान्य आधार रेखा",
+    overviewNormalBaselineSub: "SOP-R204 Rev C §3.2",
+    overviewObservedDeviation: "देखा गया विचलन",
+    overviewObservedDeviationSub: "नाममात्र सीमा से ऊपर",
+    overviewHighAlarmLimit: "उच्च अलार्म सीमा",
+    overviewHighAlarmLimitSub: "मार्जिन: 0.5 bar शेष",
+    overviewTripThreshold: "ट्रिप थ्रेशोल्ड",
+    overviewTripThresholdSub: "सुरक्षा इंटरलॉक शटडाउन",
+    overviewLayer1Title: "01 · साक्ष्य डोजियर",
+    overviewLayer1Heading: "बहु-स्रोत संपुष्टि",
+    overviewLayer1Desc: "केस निर्धारण चार स्वतंत्र साक्ष्य पद्धतियों पर आधारित हैं: संयंत्र संचालन प्रक्रियाएं, अल्ट्रासोनिक निरीक्षण स्कैन, टेलीमेट्री फ़ीड, और नियतात्मक गणनाएं।",
+    overviewRecordsIndexed: "रिकॉर्ड अनुक्रमित",
+    overviewLayer2Title: "02 · स्वतंत्र सत्यापन",
+    overviewLayer2Heading: "गैर-LLM सत्यापन रीढ़",
+    overviewLayer2Desc: "AI मॉडल निष्कर्ष प्रस्तावित करता है, लेकिन कभी भी अपने आउटपुट का स्वयं सत्यापन नहीं करता। एक अलग नियतात्मक पायथन सत्यापन इंजन ऑपरेटर डिलीवरी से पहले अलग-अलग जांच निष्पादित करता है।",
+    overviewChecksActive: "7 / 7 जांच सक्रिय",
+    overviewLayer3Title: "03 · नियंत्रण व सीमाएं",
+    overviewLayer3Heading: "डिफ़ॉल्ट-अस्वीकार नीति गेटवे",
+    overviewLayer3Desc: "प्रत्येक टूल आह्वान, ज्ञान खंड पहुंच और टेलीमेट्री क्वेरी का मूल्यांकन उपयोगकर्ता क्लीयरेंस और भूमिका अधिकार के विरुद्ध किया जाता है। अविश्वसनीय इनपुट को निष्क्रिय डेटा के रूप में संगरोधित किया जाता है।",
+    overviewGatewayPolicy: "गेटवे नीति:",
+    overviewReasoningRuntime: "तर्क रनटाइम:",
+    overviewOutsideAI: "बाहरी AI सेवाएं:",
+    overviewAuditLogging: "ऑडिट लॉगिंग:",
+    overviewDefaultDenyVal: "डिफ़ॉल्ट-अस्वीकार (सुरक्षित-बंद)",
+    overviewNoneConfigured: "कोई कॉन्फ़िगर नहीं",
+    overviewAppendOnlyEvents: "स्थानीय केवल-जोड़ ईवेंट",
+
+    // Evidence Panel
+    evidenceDossierTitle: "इस उत्तर का आधार क्या है?",
+    evidenceDossierSubtitle: "बहु-स्रोत साक्ष्य डोजियर",
+    evidenceDossierDesc: "प्रत्येक दावा सत्यापन योग्य साक्ष्य से जुड़ा है: प्रलेखित संयंत्र प्रक्रियाएं, सैंडबॉक्स किए गए उपकरण, एनालॉग गेज, या नियतात्मक गणित।",
+    evidenceFilterAll: "सभी साक्ष्य",
+    evidenceFilterDoc: "संयंत्र प्रक्रियाएं",
+    evidenceFilterTool: "सेंसर रीडिंग",
+    evidenceFilterVisual: "गेज व दृष्टि",
+    evidenceFilterCalc: "स्वतंत्र गणित",
+    evidenceEmptyTitle: "कोई साक्ष्य रिकॉर्ड उपलब्ध नहीं है",
+    evidenceEmptyDesc: "औद्योगिक जांच या परिदृश्य निष्पादित होने पर साक्ष्य रिकॉर्ड उत्पन्न होते हैं।",
+
+    // Verification Panel
+    verificationGatewayTitle: "स्वतंत्र सत्यापन गेटवे",
+    verificationGatewaySubtitle: "इस पर विश्वास क्यों करें? (7 नियतात्मक जांच)",
+    verificationGatewayDesc: "एक अलग नियतात्मक पायथन इंजन ऑपरेटर डिलीवरी से पहले स्वतंत्र सत्यापन जांच करता है। LLM कभी भी अपने आउटपुट का स्वयं सत्यापन नहीं करता।",
+    verificationEmptyTitle: "वर्तमान सत्र के लिए कोई सत्यापन परिणाम नहीं",
+    verificationEmptyDesc: "वास्तविक साक्ष्य रिकॉर्ड के विरुद्ध स्वतंत्र नियतात्मक जांच का मूल्यांकन करने के लिए AI कार्यक्षेत्र में एक औद्योगिक परिदृश्य चलाएं।",
+    verificationCheckProvTitle: "साक्ष्य स्रोत एवं सत्यनिष्ठा",
+    verificationCheckCompTitle: "आवश्यकता एवं साक्ष्य पूर्णता",
+    verificationCheckPolicyTitle: "नीति गेटवे अनुपालन",
+    verificationCheckClassTitle: "डेटा वर्गीकरण सीमा",
+    verificationCheckParamTitle: "क्रॉस-स्रोत पैरामीटर निरंतरता",
+    verificationCheckCalcTitle: "नियतात्मक गणितीय सत्यापन",
+    verificationCheckGroundTitle: "संश्लेषण आधार एवं मतिभ्रम रोकथाम",
+
+    // Execution Trace
+    traceTitle: "फोरेंसिक निष्पादन ट्रेस",
+    traceSubtitle: "नियतात्मक जीवनचक्र",
+    traceEventId: "ईवेंट ID:",
+    tracePhase1: "01 · अनुरोध अंतर्ग्रहण एवं पार्सिंग",
+    tracePhase1Desc: "क्वेरी प्राप्त हुई और परिचालन उद्देश्य, लक्षित संपत्ति और क्लीयरेंस सीमाओं में वर्गीकृत की गई।",
+    tracePhase2: "02 · नीति गेटवे मूल्यांकन",
+    tracePhase2Desc: "अनुरोधित टूल कार्रवाइयों का मूल्यांकन उपयोगकर्ता अनुमतियों और सुरक्षा नीतियों के विरुद्ध किया गया।",
+    tracePhase3: "03 · साक्ष्य पुनर्प्राप्ति एवं टूल निष्पादन",
+    tracePhase3Desc: "ज्ञान खंड पुनर्प्राप्त किए गए और अलग सैंडबॉक्स एन्क्लेव में उपकरण निष्पादन संपन्न हुआ।",
+    tracePhase4: "04 · नियतात्मक सत्यापन एवं मान्यता",
+    tracePhase4Desc: "गैर-LLM नियतात्मक जांचों ने गणित, स्रोत, पूर्णता और साक्ष्य आधार को स्वतंत्र रूप से सत्यापित किया।",
+    tracePhase5: "05 · डोजियर संश्लेषण एवं ऑडिट प्रविष्टि",
+    tracePhase5Desc: "अंतिम उत्तर तैयार किया गया और छेड़छाड़-रोधी स्थानीय ऑडिट बस में दर्ज किया गया।",
+
+    // Governance View
+    govTitle: "कौन क्या कर सकता है · RBAC एवं टूल गेटवे",
+    govSubtitle: "प्रत्येक एजेंट प्रस्ताव को कार्रवाई से पहले रोका और नियंत्रित किया जाता है। नियंत्रण नीतियां सख्ती से तय करती हैं कि AI क्या कार्रवाई प्रस्तावित कर सकता है।",
+    govActivePersona: "वर्तमान सक्रिय भूमिका:",
+    govPermissionMatrixTitle: "भूमिका अनुमति एवं संचालन प्राधिकरण मैट्रिक्स",
+    govColRole: "भूमिका व स्तर",
+    govColRead: "ज्ञान व टेलीमेट्री",
+    govColInvestigate: "जांच चलाएं",
+    govColActuate: "संयंत्र संचालन",
+    govColAdmin: "प्रशासन",
+    govColSummary: "परिचालन सीमा",
+    govStatusAllowed: "✓ अनुमत",
+    govStatusApproval: "⚠ अनुमोदन आवश्यक",
+    govStatusBlocked: "✕ अवरुद्ध",
+    govToolSandboxTitle: "पंजीकृत औद्योगिक उपकरण व सीमा हैंडलर",
+    govToolReadOnly: "केवल-पढ़ने योग्य",
+    govToolActuation: "संचालन (लेखन)",
+
+    // Audit View
+    auditTitle: "छेड़छाड़-रोधी ऑडिट समयरेखा",
+    auditSubtitle: "प्रत्येक प्रश्न, टूल आह्वान, नीति अवरोधन और सत्यापन प्रमाण को रिकॉर्ड करने वाला केवल-जोड़ स्थानीय ईवेंट लॉग।",
+    auditResetButton: "↺ ऑडिट ईवेंट रीसेट करें",
+    auditResetting: "ईवेंट साफ़ हो रहे हैं...",
+    auditFilterAll: "सभी ईवेंट",
+    auditFilterAgent: "एजेंट प्रश्न",
+    auditFilterTool: "टूल आह्वान",
+    auditFilterPolicy: "नीति अवरोधन",
+    auditFilterVerification: "सत्यापन प्रमाण",
+    auditFilterKnowledge: "ज्ञान पहुंच",
+    auditEmptyTitle: "कोई ऑडिट ईवेंट रिकॉर्ड नहीं किया गया",
+    auditEmptyDesc: "कंट्रोल प्लेन में निष्पादित सभी ऑपरेशन इस कालानुक्रमिक समयरेखा में दिखाई देंगे।",
+    auditTotalEvents: "कुल रिकॉर्ड किए गए ईवेंट:",
+
+    // Sovereignty View
+    sovTitle: "संप्रभुता एवं एयर-गैप एन्क्लेव",
+    sovSubtitle: "शून्य क्लाउड निर्भरता, शून्य बाहरी AI कॉल, ऑन-प्रिमाइसेस मॉडल निष्पादन, और नियतात्मक हार्डवेयर सीमा अलगाव।",
+    sovCardLocalAITitle: "स्थानीय AI",
+    sovCardLocalKnowledgeTitle: "स्थानीय ज्ञान",
+    sovCardLocalToolsTitle: "स्थानीय उपकरण",
+    sovCardVerificationTitle: "सत्यापन",
+    sovCardAuditTitle: "ऑडिट लॉग",
+    sovModelRouterTitle: "कार्य-आधारित स्थानीय मॉडल रूटिंग मैट्रिक्स",
+    sovRouterColTask: "कार्य प्रकार",
+    sovRouterColModel: "आवंटित स्थानीय मॉडल",
+    sovRouterColVram: "VRAM प्रोफ़ाइल",
+    sovRouterColRationale: "रूटिंग तर्क",
+    sovNetworkAuditTitle: "नेटवर्क इग्रेस डायग्नोस्टिक (सख्त शून्य क्लाउड)",
+    sovZeroCloudCalls: "शून्य क्लाउड कॉल सत्यापित",
   },
 
   kn: {
@@ -709,6 +1126,11 @@ export const translations: Record<Language, TranslationDictionary> = {
     knowledgeUploadModalClass: "ದಾಖಲೆ ವರ್ಗೀಕರಣ:",
     knowledgeUploadModalSubmit: "ದಾಖಲೆ ಸೇರಿಸಿ ಮತ್ತು ಸೂಚ್ಯಂಕಗೊಳಿಸಿ",
     knowledgeUploadModalClose: "ಮುಚ್ಚಿ",
+    knowledgeSynthesisTitle: "ಉನ್ನತ ಮರುಪಡೆಯಲಾದ ಸಂಶ್ಲೇಷಣೆ",
+    knowledgeSynthesisSubtitle: "ಖಾಸಗಿ ಸ್ಥಾವರ ದಾಖಲೆಗಳಿಂದ ಸಂಶ್ಲೇಷಿಸಲಾಗಿದೆ",
+    knowledgePrimarySource: "ಪ್ರಾಥಮಿಕ ಮೂಲ:",
+    knowledgeOnPremData: "✓ 100% ಆನ್-ಪ್ರೆಮಿಸಸ್ ಸ್ಥಳೀಯ ಡೇಟಾ",
+    knowledgeRetrievedPassages: "ಮರುಪಡೆಯಲಾದ ಭಾಗಗಳು",
 
     // Voice Assistant
     voiceModalTitle: "ಸಾರ್ವಭೌಮ ಧ್ವನಿ ಸಹಾಯಕ",
@@ -722,15 +1144,149 @@ export const translations: Record<Language, TranslationDictionary> = {
     voiceUnavailableDesc: "FORGE Google, Apple ಅಥವಾ OpenAI ಕ್ಲೌಡ್ ಧ್ವನಿ API ಗಳನ್ನು ಕಟ್ಟುನಿಟ್ಟಾಗಿ ನಿಷೇಧಿಸುತ್ತದೆ. ಸ್ಥಳೀಯ STT ಸಕ್ರಿಯಗೊಳಿಸಲು vosk ಅಥವಾ whisper.cpp ಸ್ಥಾಪಿಸಿ. ಪಠ್ಯ ಕನ್ಸೋಲ್ 100% ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತದೆ.",
     voiceStartListening: "🎙 ಆಲಿಸಲು ಪ್ರಾರಂಭಿಸಿ",
     voiceStopListening: "⏹ ನಿಲ್ಲಿಸಿ ಮತ್ತು ಪರಿವರ್ತಿಸಿ",
-    voiceTransferQuery: "ಪ್ರಶ್ನೆ ಕ್ಷೇತ್ರಕ್ಕೆ ಕಳುಹಿಸಿ",
-    voiceExecuteQuery: "ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಕಾರ್ಯಗತಗೊಳಿಸಿ ▶",
+    voiceTransferQuery: "ಪ್ರಶ್ನೆ ಕ್ಷೇತ್ರಕ್ಕೆ ವರ್ಗಾಯಿಸಿ",
+    voiceExecuteQuery: "ಪರಿಶೀಲಿಸಿ ಮತ್ತು ತನಿಖಾ ಲೂಪ್ ಚಲಾಯಿಸಿ ▶",
     voiceStopSpeaking: "🔇 ಮಾತನಾಡುವುದನ್ನು ನಿಲ್ಲಿಸಿ",
     voiceRetry: "↺ ಪುನಃ ಪ್ರಯತ್ನಿಸಿ",
     voiceClose: "ಮುಚ್ಚಿ",
 
+    // Read Aloud Controls & States
+    readAloudLabel: "ಗಟ್ಟಿಯಾಗಿ ಓದಿ",
+    readAloudStop: "ಪ್ಲೇಬ್ಯಾಕ್ ನಿಲ್ಲಿಸಿ",
+    readAloudPlaying: "ಓದಲಾಗುತ್ತಿದೆ...",
+    readAloudUnavailable: "{lang} ಗಾಗಿ ಸ್ಥಳೀಯ ಧ್ವನಿ ಲಭ್ಯವಿಲ್ಲ",
+
     // Reports
     reportExportSuccess: "ಮಿಷನ್ ವರ್ಡ್ ವರದಿಯನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಡೌನ್‌ಲೋಡ್ ಮಾಡಲಾಗಿದೆ.",
     reportExportError: "ವರ್ಡ್ ವರದಿ ರಚಿಸಲು ವಿಫಲವಾಗಿದೆ.",
+
+    // Overview View
+    overviewCaseBadge: "ಕಾರ್ಯಾಚರಣೆ ಪ್ರಕರಣ · R-204-REV4",
+    overviewFacilityUnit: "ಹೈಡ್ರೋಕ್ರ್ಯಾಕರ್ ಲೂಪ್ · ಸೌಲಭ್ಯ ಘಟಕ 4",
+    overviewConfidential: "ಗೌಪ್ಯ",
+    overviewHeading: "ರಿಯಾಕ್ಟರ್ R-204 ಒತ್ತಡ ವ್ಯತ್ಯಾಸ ತನಿಖೆ",
+    overviewSubheading: "ಕಾರ್ಯಾಚರಣೆಯ ಒತ್ತಡ ಟೆಲಿಮೆಟ್ರಿ, ಅಲ್ಟ್ರಾಸಾನಿಕ್ ಶೆಲ್ ಗೋಡೆ ತಪಾಸಣೆ ಮತ್ತು ಸ್ಥಾವರ ಕಾರ್ಯಾಚರಣೆಯ ಪ್ರಕ್ರಿಯೆಗಳನ್ನು ಸಂಶ್ಲೇಷಿಸುವ ಸ್ವಾಯತ್ತ ಕೈಗಾರಿಕಾ ತನಿಖೆ. ಎಲ್ಲಾ ತರ್ಕಗಳು ಸಾರ್ವಭೌಮವಾಗಿವೆ, ಉಪಕರಣ ಕಾರ್ಯಾಚರಣೆಯು ನೀತಿ-ನಿಯಂತ್ರಿತವಾಗಿದೆ ಮತ್ತು ತೀರ್ಮಾನಗಳನ್ನು ಗಣಿತಶಾಸ್ತ್ರೀಯವಾಗಿ ಪರಿಶೀಲಿಸಲಾಗಿದೆ.",
+    overviewOpenWorkspace: "AI ಕಾರ್ಯಕ್ಷೇತ್ರ ತೆರೆಯಿರಿ ▶",
+    overviewOperationalParams: "ಪ್ರಾಥಮಿಕ ಕಾರ್ಯಾಚರಣಾ ನಿಯತಾಂಕಗಳು · ರಿಯಾಕ್ಟರ್ R-204",
+    overviewTelemetryPoint: "ಟೆಲಿಮೆಟ್ರಿ ಬಿಂದು: PI-204",
+    overviewCurrentCondition: "ಪ್ರಸ್ತುತ ಸ್ಥಿತಿ",
+    overviewCurrentConditionSub: "ಅನಲಾಗ್ ಸೂಚಕ PI-204",
+    overviewNormalBaseline: "ಸಾಮಾನ್ಯ ಮೂಲರೇಖೆ",
+    overviewNormalBaselineSub: "SOP-R204 Rev C §3.2",
+    overviewObservedDeviation: "ಕಂಡುಬಂದ ವ್ಯತ್ಯಾಸ",
+    overviewObservedDeviationSub: "ಸಾಮಾನ್ಯ ಮಿತಿಗಿಂತ ಹೆಚ್ಚು",
+    overviewHighAlarmLimit: "ಗರಿಷ್ಠ ಎಚ್ಚರಿಕೆ ಮಿತಿ",
+    overviewHighAlarmLimitSub: "ಮಾರ್ಜಿನ್: 0.5 bar ಉಳಿದಿದೆ",
+    overviewTripThreshold: "ಟ್ರಿಪ್ ಮಿತಿ",
+    overviewTripThresholdSub: "ಸುರಕ್ಷತಾ ಇಂಟರ್‌ಲಾಕ್ ಸ್ಥಗಿತ",
+    overviewLayer1Title: "01 · ಪುರಾವೆ ಡಾಕ್ಯುಮೆಂಟ್",
+    overviewLayer1Heading: "ಬಹು-ಮೂಲ ದೃಢೀಕರಣ",
+    overviewLayer1Desc: "ಪ್ರಕರಣದ ನಿರ್ಧಾರಗಳು ನಾಲ್ಕು ಸ್ವತಂತ್ರ ಪುರಾವೆ ವಿಧಾನಗಳನ್ನು ಆಧರಿಸಿವೆ: ಸ್ಥಾವರ ಕಾರ್ಯಾಚರಣೆಯ ಪ್ರಕ್ರಿಯೆಗಳು, ಅಲ್ಟ್ರಾಸಾನಿಕ್ ತಪಾಸಣಾ ಸ್ಕ್ಯಾನ್‌ಗಳು, ಟೆಲಿಮೆಟ್ರಿ ಫೀಡ್‌ಗಳು ಮತ್ತು ನಿಖರ ಲೆಕ್ಕಾಚಾರಗಳು.",
+    overviewRecordsIndexed: "ದಾಖಲೆಗಳು ಸೂಚ್ಯಂಕಿತಗೊಂಡಿವೆ",
+    overviewLayer2Title: "02 · ಸ್ವತಂತ್ರ ಪರಿಶೀಲನೆ",
+    overviewLayer2Heading: "ನಾನ್-LLM ಪರಿಶೀಲನಾ ಬೆನ್ನೆಲುಬು",
+    overviewLayer2Desc: "AI ಮಾದರಿಯು ತೀರ್ಮಾನಗಳನ್ನು ಪ್ರಸ್ತಾಪಿಸುತ್ತದೆ, ಆದರೆ ತನ್ನದೇ ಆದ ಔಟ್‌ಪುಟ್ ಅನ್ನು ಎಂದಿಗೂ ಸ್ವಯಂ ಪರಿಶೀಲಿಸುವುದಿಲ್ಲ. ಪ್ರತ್ಯೇಕ ಪೈಥಾನ್ ಪರಿಶೀಲನಾ ಎಂಜಿನ್ ಆಪರೇಟರ್‌ಗೆ ತಲುಪಿಸುವ ಮೊದಲು ಪರಿಶೀಲನೆಗಳನ್ನು ನಡೆಸುತ್ತದೆ.",
+    overviewChecksActive: "7 / 7 ತಪಾಸಣೆಗಳು ಸಕ್ರಿಯ",
+    overviewLayer3Title: "03 · ನಿಯಂತ್ರಣಗಳು ಮತ್ತು ಗಡಿಗಳು",
+    overviewLayer3Heading: "ಡೀಫಾಲ್ಟ್-ನಿರಾಕರಣೆ ನೀತಿ ಗೇಟ್‌ವೇ",
+    overviewLayer3Desc: "ಪ್ರತಿಯೊಂದು ಟೂಲ್ ಚಾಲನೆ, ಜ್ಞಾನ ವಿಭಾಗದ ಪ್ರವೇಶ ಮತ್ತು ಟೆಲಿಮೆಟ್ರಿ ಪ್ರಶ್ನೆಯನ್ನು ಪಾತ್ರದ ಅಧಿಕಾರದ ವಿರುದ್ಧ ಮೌಲ್ಯಮಾಪನ ಮಾಡಲಾಗುತ್ತದೆ. ಅನಪೇಕ್ಷಿತ ಇನ್‌ಪುಟ್‌ಗಳನ್ನು ಪ್ರತ್ಯೇಕಿಸಲಾಗುತ್ತದೆ.",
+    overviewGatewayPolicy: "ಗೇಟ್‌ವೇ ನೀತಿ:",
+    overviewReasoningRuntime: "ತರ್ಕ ರನ್‌ಟೈಮ್:",
+    overviewOutsideAI: "ಬಾಹ್ಯ AI ಸೇವೆಗಳು:",
+    overviewAuditLogging: "ಆಡಿಟ್ ಲಾಗಿಂಗ್:",
+    overviewDefaultDenyVal: "ಡೀಫಾಲ್ಟ್-ನಿರಾಕರಣೆ (ಫೇಲ್-ಕ್ಲೋಸ್ಡ್)",
+    overviewNoneConfigured: "ಯಾವುದನ್ನೂ ಕಾನ್ಫಿಗರ್ ಮಾಡಲಾಗಿಲ್ಲ",
+    overviewAppendOnlyEvents: "ಸ್ಥಳೀಯ ಆಡಿಟ್ ಈವೆಂಟ್‌ಗಳು",
+
+    // Evidence Panel
+    evidenceDossierTitle: "ಈ ಉತ್ತರವನ್ನು ಏನು ಬೆಂಬಲಿಸುತ್ತದೆ?",
+    evidenceDossierSubtitle: "ಬಹು-ಮೂಲ ಪುರಾವೆ ಡಾಕ್ಯುಮೆಂಟ್",
+    evidenceDossierDesc: "ಪ್ರತಿಯೊಂದು ಹೇಳಿಕೆಯೂ ಪರಿಶೀಲಿಸಬಹುದಾದ ಪುರಾವೆಗಳಿಗೆ ಬದ್ಧವಾಗಿದೆ: ದಾಖಲಿತ ಸ್ಥಾವರ ಕಾರ್ಯವಿಧಾನಗಳು, ಸ್ಯಾಂಡ್‌ಬಾಕ್ಸ್ ಟೂಲ್‌ಗಳು, ಅನಲಾಗ್ ಗೇಜ್‌ಗಳು ಅಥವಾ ಗಣಿತ.",
+    evidenceFilterAll: "ಎಲ್ಲಾ ಪುರಾವೆಗಳು",
+    evidenceFilterDoc: "ಸ್ಥಾವರ ಕಾರ್ಯವಿಧಾನಗಳು",
+    evidenceFilterTool: "ಸಂವೇದಕ ವಾಚನಗಳು",
+    evidenceFilterVisual: "ಗೇಜ್ ಮತ್ತು ದೃಷ್ಟಿ",
+    evidenceFilterCalc: "ಸ್ವತಂತ್ರ ಗಣಿತ",
+    evidenceEmptyTitle: "ಯಾವುದೇ ಪುರಾವೆ ದಾಖಲೆಗಳು ಲಭ್ಯವಿಲ್ಲ",
+    evidenceEmptyDesc: "ಕೈಗಾರಿಕಾ ತನಿಖೆ ಅಥವಾ ಪ್ರಕರಣವನ್ನು ಚಲಾಯಿಸಿದಾಗ ಪುರಾವೆ ದಾಖಲೆಗಳು ರಚನೆಯಾಗುತ್ತವೆ.",
+
+    // Verification Panel
+    verificationGatewayTitle: "ಸ್ವತಂತ್ರ ಪರಿಶೀಲನಾ ಗೇಟ್‌ವೇ",
+    verificationGatewaySubtitle: "ಇದನ್ನು ಏಕೆ ನಂಬಬೇಕು? (7 ನಿಖರ ತಪಾಸಣೆಗಳು)",
+    verificationGatewayDesc: "ಪ್ರತ್ಯೇಕ ಪೈಥಾನ್ ಎಂಜಿನ್ ಆಪರೇಟರ್‌ಗೆ ತಲುಪಿಸುವ ಮೊದಲು ಪರಿಶೀಲನೆಗಳನ್ನು ನಡೆಸುತ್ತದೆ. LLM ಎಂದಿಗೂ ತನ್ನದೇ ಆದ ಔಟ್‌ಪುಟ್ ಅನ್ನು ಪರಿಶೀಲಿಸುವುದಿಲ್ಲ.",
+    verificationEmptyTitle: "ಪ್ರಸ್ತುತ ಅವಧಿಗೆ ಯಾವುದೇ ಪರಿಶೀಲನಾ ಫಲಿತಾಂಶಗಳಿಲ್ಲ",
+    verificationEmptyDesc: "ನೈಜ ಪುರಾವೆಗಳ ವಿರುದ್ಧ ಸ್ವತಂತ್ರ ತಪಾಸಣೆಗಳನ್ನು ಮೌಲ್ಯಮಾಪನ ಮಾಡಲು AI ಕಾರ್ಯಕ್ಷೇತ್ರದಲ್ಲಿ ಕೈಗಾರಿಕಾ ಪ್ರಕರಣವನ್ನು ಚಲಾಯಿಸಿ.",
+    verificationCheckProvTitle: "ಪುರಾವೆ ಮೂಲ ಮತ್ತು ಸಮಗ್ರತೆ",
+    verificationCheckCompTitle: "ಅಗತ್ಯತೆ ಮತ್ತು ಪುರಾವೆ ಸಂಪೂರ್ಣತೆ",
+    verificationCheckPolicyTitle: "ನೀತಿ ಗೇಟ್‌ವೇ ಅನುಸರಣೆ",
+    verificationCheckClassTitle: "ಡೇಟಾ ವರ್ಗೀಕರಣ ಗಡಿ",
+    verificationCheckParamTitle: "ಅಂತರ್-ಮೂಲ ನಿಯತಾಂಕ ಸ್ಥಿರತೆ",
+    verificationCheckCalcTitle: "ನಿಖರ ಗಣಿತ ಲೆಕ್ಕಾಚಾರ ಪರಿಶೀಲನೆ",
+    verificationCheckGroundTitle: "ಸಂಶ್ಲೇಷಣಾ ಆಧಾರ ಮತ್ತು ಭ್ರಮೆ ತಡೆ",
+
+    // Execution Trace
+    traceTitle: "ಫೋರೆನ್ಸಿಕ್ ಎಕ್ಸಿಕ್ಯೂಶನ್ ಟ್ರೇಸ್",
+    traceSubtitle: "ನಿಖರ ಜೀವನಚಕ್ರ",
+    traceEventId: "ಈವೆಂಟ್ ID:",
+    tracePhase1: "01 · ವಿನಂತಿ ಸ್ವೀಕಾರ ಮತ್ತು ವಿಶ್ಲೇಷಣೆ",
+    tracePhase1Desc: "ಪ್ರಶ್ನೆಯನ್ನು ಸ್ವೀಕರಿಸಿ ಕಾರ್ಯಾಚರಣೆಯ ಉದ್ದೇಶ ಮತ್ತು ಭದ್ರತಾ ಗಡಿಗಳಾಗಿ ವರ್ಗೀಕರಿಸಲಾಗಿದೆ.",
+    tracePhase2: "02 · ನೀತಿ ಗೇಟ್‌ವೇ ಮೌಲ್ಯಮಾಪನ",
+    tracePhase2Desc: "ಕೋರಲಾದ ಉಪಕರಣದ ಕ್ರಮಗಳನ್ನು ಪಾತ್ರದ ಅನುಮತಿಗಳು ಮತ್ತು ಸುರಕ್ಷತಾ ನೀತಿಗಳ ವಿರುದ್ಧ ಮೌಲ್ಯಮಾಪನ ಮಾಡಲಾಗಿದೆ.",
+    tracePhase3: "03 · ಪುರಾವೆ ಮರುಪಡೆಯುವಿಕೆ ಮತ್ತು ಟೂಲ್ ಚಾಲನೆ",
+    tracePhase3Desc: "ಜ್ಞಾನದ ಭಾಗಗಳನ್ನು ಪಡೆಯಲಾಗಿದೆ ಮತ್ತು ಪ್ರತ್ಯೇಕ ಸ್ಯಾಂಡ್‌ಬಾಕ್ಸ್‌ನಲ್ಲಿ ಟೂಲ್‌ಗಳನ್ನು ಚಲಾಯಿಸಲಾಗಿದೆ.",
+    tracePhase4: "04 · ನಿಖರ ಪರಿಶೀಲನೆ ಮತ್ತು ಮೌಲ್ಯೀಕರಣ",
+    tracePhase4Desc: "ನಾನ್-LLM ಪರಿಶೀಲನೆಗಳು ಗಣಿತ, ಮೂಲ ಮತ್ತು ಪುರಾವೆಯ ಆಧಾರವನ್ನು ಸ್ವತಂತ್ರವಾಗಿ ಖಚಿತಪಡಿಸಿವೆ.",
+    tracePhase5: "05 · ಡಾಕ್ಯುಮೆಂಟ್ ಸಂಶ್ಲೇಷಣೆ ಮತ್ತು ಆಡಿಟ್ ದಾಖಲಾತಿ",
+    tracePhase5Desc: "ಅಂತಿಮ ಉತ್ತರವನ್ನು ಸಿದ್ಧಪಡಿಸಿ ಬದಲಾಯಿಸಲಾಗದ ಸ್ಥಳೀಯ ಆಡಿಟ್ ಲಾಗ್‌ಗೆ ದಾಖಲಿಸಲಾಗಿದೆ.",
+
+    // Governance View
+    govTitle: "ಯಾರು ಏನು ಮಾಡಬಹುದು · RBAC ಮತ್ತು ಟೂಲ್ ಗೇಟ್‌ವೇ",
+    govSubtitle: "ಪ್ರತಿಯೊಂದು ಏಜೆಂಟ್ ಪ್ರಸ್ತಾಪವನ್ನು ಕಾರ್ಯಗತಗೊಳಿಸುವ ಮೊದಲು ತಡೆಹಿಡಿಯಲಾಗುತ್ತದೆ. AI ಯಾವ ಕ್ರಮಗಳನ್ನು ಪ್ರಸ್ತಾಪಿಸಬಹುದೆಂದು ನಿಯಂತ್ರಣ ನೀತಿಗಳು ಕಟ್ಟುನಿಟ್ಟಾಗಿ ನಿರ್ಧರಿಸುತ್ತವೆ.",
+    govActivePersona: "ಪ್ರಸ್ತುತ ಸಕ್ರಿಯ ಪಾತ್ರ:",
+    govPermissionMatrixTitle: "ಪಾತ್ರದ ಅನುಮತಿ ಮತ್ತು ಕಾರ್ಯಾಚರಣಾ ಪ್ರಾಧಿಕಾರ ಮ್ಯಾಟ್ರಿಕ್ಸ್",
+    govColRole: "ಪಾತ್ರ ಮತ್ತು ಮಟ್ಟ",
+    govColRead: "ಜ್ಞಾನ ಮತ್ತು ಟೆಲಿಮೆಟ್ರಿ",
+    govColInvestigate: "ತನಿಖೆ ನಡೆಸಿ",
+    govColActuate: "ಸ್ಥಾವರ ಕಾರ್ಯಾಚರಣೆ",
+    govColAdmin: "ಆಡಳಿತ",
+    govColSummary: "ಕಾರ್ಯಾಚರಣಾ ಗಡಿ",
+    govStatusAllowed: "✓ ಅನುಮತಿಸಲಾಗಿದೆ",
+    govStatusApproval: "⚠ ಅನುಮೋದನೆ ಅಗತ್ಯವಿದೆ",
+    govStatusBlocked: "✕ ನಿರ್ಬಂಧಿಸಲಾಗಿದೆ",
+    govToolSandboxTitle: "ನೋಂದಾಯಿತ ಕೈಗಾರಿಕಾ ಉಪಕರಣಗಳು ಮತ್ತು ಗಡಿ ನಿರ್ವಾಹಕರು",
+    govToolReadOnly: "ಓದಲು-ಮಾತ್ರ",
+    govToolActuation: "ಕಾರ್ಯಾಚರಣೆ (ಬರವಣಿಗೆ)",
+
+    // Audit View
+    auditTitle: "ಟ್ಯಾಂಪರ್-ಮುಕ್ತ ಆಡಿಟ್ ಟೈಮ್‌ಲೈನ್",
+    auditSubtitle: "ಪ್ರತಿಯೊಂದು ಪ್ರಶ್ನೆ, ಟೂಲ್ ಚಾಲನೆ, ನೀತಿ ತಡೆ ಮತ್ತು ಪರಿಶೀಲನಾ ಪುರಾವೆಗಳನ್ನು ದಾಖಲಿಸುವ ಸ್ಥಳೀಯ ಈವೆಂಟ್ ಲಾಗ್.",
+    auditResetButton: "↺ ಆಡಿಟ್ ಈವೆಂಟ್‌ಗಳನ್ನು ಮರುಹೊಂದಿಸಿ",
+    auditResetting: "ಈವೆಂಟ್‌ಗಳನ್ನು ತೆರವುಗೊಳಿಸಲಾಗುತ್ತಿದೆ...",
+    auditFilterAll: "ಎಲ್ಲಾ ಈವೆಂಟ್‌ಗಳು",
+    auditFilterAgent: "ಏಜೆಂಟ್ ಪ್ರಶ್ನೆಗಳು",
+    auditFilterTool: "ಟೂಲ್ ಚಾಲನೆಗಳು",
+    auditFilterPolicy: "ನೀತಿ ತಡೆಗಳು",
+    auditFilterVerification: "ಪರಿಶೀಲನಾ ಪುರಾವೆಗಳು",
+    auditFilterKnowledge: "ಜ್ಞಾನ ಪ್ರವೇಶ",
+    auditEmptyTitle: "ಯಾವುದೇ ಆಡಿಟ್ ಈವೆಂಟ್‌ಗಳು ದಾಖಲಾಗಿಲ್ಲ",
+    auditEmptyDesc: "ನಿಯಂತ್ರಣ ಫಲಕದಲ್ಲಿ ಕಾರ್ಯಗತಗೊಳಿಸಲಾದ ಎಲ್ಲಾ ಕಾರ್ಯಾಚರಣೆಗಳು ಈ ಕಾಲಾನುಕ್ರಮದ ಟೈಮ್‌ಲೈನ್‌ನಲ್ಲಿ ಕಾಣಿಸಿಕೊಳ್ಳುತ್ತವೆ.",
+    auditTotalEvents: "ಒಟ್ಟು ದಾಖಲಾದ ಈವೆಂಟ್‌ಗಳು:",
+
+    // Sovereignty View
+    sovTitle: "ಸಾರ್ವಭೌಮತ್ವ ಮತ್ತು ಏರ್-ಗ್ಯಾಪ್ ಎನ್‌ಕ್ಲೇವ್",
+    sovSubtitle: "ಶೂನ್ಯ ಕ್ಲೌಡ್ ಅವಲಂಬನೆಗಳು, ಶೂನ್ಯ ಬಾಹ್ಯ AI ಕರೆಗಳು, ಆನ್-ಪ್ರೆಮಿಸಸ್ ಮಾದರಿ ಚಾಲನೆ ಮತ್ತು ಹಾರ್ಡ್‌ವೇರ್ ಗಡಿ ಪ್ರತ್ಯೇಕತೆ.",
+    sovCardLocalAITitle: "ಸ್ಥಳೀಯ AI",
+    sovCardLocalKnowledgeTitle: "ಸ್ಥಳೀಯ ಜ್ಞಾನ",
+    sovCardLocalToolsTitle: "ಸ್ಥಳೀಯ ಉಪಕರಣಗಳು",
+    sovCardVerificationTitle: "ಪರಿಶೀಲನೆ",
+    sovCardAuditTitle: "ಆಡಿಟ್ ಲಾಗ್",
+    sovModelRouterTitle: "ಕಾರ್ಯ-ಆಧಾರಿತ ಸ್ಥಳೀಯ ಮಾದರಿ ರೂಟಿಂಗ್ ಮ್ಯಾಟ್ರಿಕ್ಸ್",
+    sovRouterColTask: "ಕಾರ್ಯ ಪ್ರಕಾರ",
+    sovRouterColModel: "ನಿಯೋಜಿಸಲಾದ ಸ್ಥಳೀಯ ಮಾದರಿ",
+    sovRouterColVram: "VRAM ಪ್ರೊಫೈಲ್",
+    sovRouterColRationale: "ರೂಟಿಂಗ್ ತರ್ಕ",
+    sovNetworkAuditTitle: "ನೆಟ್‌ವರ್ಕ್ ಎಗ್ರೆಸ್ ಡಯಾಗ್ನೋಸ್ಟಿಕ್ (ಕಟ್ಟುನಿಟ್ಟಾದ ಶೂನ್ಯ ಕ್ಲೌಡ್)",
+    sovZeroCloudCalls: "ಶೂನ್ಯ ಕ್ಲೌಡ್ ಕರೆಗಳು ಪರಿಶೀಲಿಸಲಾಗಿದೆ",
   },
 };
 
@@ -745,7 +1301,7 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType>({
   language: "en",
   setLanguage: () => {},
-  t: (key) => translations.en[key] || String(key),
+  t: (key) => String(key),
   formatNumber: (val) => String(val),
   formatDate: (iso) => iso,
 });

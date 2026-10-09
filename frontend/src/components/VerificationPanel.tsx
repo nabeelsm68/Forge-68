@@ -8,12 +8,14 @@ import {
   BrassLabel,
   Divider,
 } from "@/components/primitives";
+import { useTranslation } from "@/lib/i18n";
 
 interface VerificationPanelProps {
   verification?: VerificationResult | null;
 }
 
 export function VerificationPanel({ verification }: VerificationPanelProps) {
+  const { t } = useTranslation();
   const [expandedCheckName, setExpandedCheckName] = useState<string | null>(null);
 
   // Baseline 7 checks for Reactor R-204 investigation if none dynamically provided
@@ -21,7 +23,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     {
       check_name: "PROVENANCE",
       plainTitle: "Sources traceable",
-      title: "Evidence Provenance & Integrity",
+      title: t("verificationCheckProvTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "All ingested document chunks, tool telemetry, and visual observations possess verifiable source references and SHA-256 digests.",
       details: "Evidence records verified to source digests. No orphaned claims detected.",
@@ -29,7 +31,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     {
       check_name: "COMPLETENESS",
       plainTitle: "Evidence complete",
-      title: "Requirement & Evidence Completeness",
+      title: t("verificationCheckCompTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "Every reasoning claim in the agent's plan has corresponding backing records across knowledge, tooling, and sensor telemetry.",
       details: "Evidence coverage confirmed across ingested references and tool records.",
@@ -37,7 +39,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     {
       check_name: "POLICY",
       plainTitle: "Within policy rules",
-      title: "Policy Gateway Compliance",
+      title: t("verificationCheckPolicyTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "All requested operations evaluated against role clearance. Zero execution of unauthorized, critical-risk, or write-actuation tool handlers.",
       details: "Gateway default-deny confirmed. Critical mutations blocked.",
@@ -45,7 +47,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     {
       check_name: "CLASSIFICATION",
       plainTitle: "Within your access",
-      title: "Data Classification Boundary",
+      title: t("verificationCheckClassTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "Data classification levels respected. Requester clearance strictly subsumes retrieved document tiers.",
       details: "Zero clearance leakage. Bounded within sovereign enclave.",
@@ -53,7 +55,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     {
       check_name: "PARAMETER_CONSISTENCY",
       plainTitle: "Values agree",
-      title: "Cross-Source Parameter Consistency",
+      title: t("verificationCheckParamTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "Operating readings and engineering baselines are compared across multiple sources. Variances are flagged for review.",
       details: "Cross-source parameter consistency verified against available reference baselines.",
@@ -61,7 +63,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     {
       check_name: "CALCULATION",
       plainTitle: "Math independently checked",
-      title: "Deterministic Math Validation",
+      title: t("verificationCheckCalcTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "All numerical variances and engineering calculations are calculated by pure Python code, not by the language model.",
       details: "Deterministic math verified via Python engine.",
@@ -69,7 +71,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     {
       check_name: "GROUNDING",
       plainTitle: "Answer supported by evidence",
-      title: "Synthesis Grounding & Hallucination Gate",
+      title: t("verificationCheckGroundTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "Response text is checked for factual grounding against verified evidence. Speculative assertions are purged.",
       details: "Asserted quantities verified against backing evidence records.",
@@ -80,12 +82,12 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     return (
       <EnamelSurface variant="base" padding="spacious">
         <div style={{ textAlign: "center", padding: "40px 20px" }}>
-          <BrassLabel variant="outline">INDEPENDENT VERIFICATION GATEWAY</BrassLabel>
+          <BrassLabel variant="outline">{t("verificationGatewayTitle")}</BrassLabel>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: "24px", color: "var(--ink)", marginTop: 12, marginBottom: 8, fontWeight: 500 }}>
-            No Verification Results For Current Session
+            {t("verificationEmptyTitle")}
           </h2>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: "14px", color: "var(--ink-2)", maxWidth: "54ch", margin: "0 auto" }}>
-            Execute an industrial scenario in the AI Workspace to evaluate the independent deterministic checks against real evidence records.
+            {t("verificationEmptyDesc")}
           </p>
         </div>
       </EnamelSurface>
@@ -151,12 +153,11 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
           </div>
 
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: "28px", color: "var(--ink)", fontWeight: 500 }}>
-            Why should you trust this answer?
+            {t("verificationGatewaySubtitle")}
           </h2>
 
           <p style={{ fontFamily: "var(--font-ui)", fontSize: "14px", color: "var(--ink-2)", marginTop: 4, maxWidth: 680 }}>
-            In FORGE, reasoning proposals generated by language models undergo 7 post-generation verification checks
-            performed by deterministic Python code before delivery to operators.
+            {t("verificationGatewayDesc")}
           </p>
         </div>
 

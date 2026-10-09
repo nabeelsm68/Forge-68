@@ -17,8 +17,10 @@ import {
   BrassLabel,
   Divider,
 } from "@/components/primitives";
+import { useTranslation } from "@/lib/i18n";
 
 export function SovereigntyView() {
+  const { t } = useTranslation();
   const runtime = useRuntimeCapabilities();
   const [sovereignty, setSovereignty] = useState<SovereigntyStatusResponse | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -84,31 +86,31 @@ export function SovereigntyView() {
   const fiveCards = [
     {
       technicalLabel: "01 LOCAL INFERENCE",
-      title: "Local AI",
+      title: t("sovCardLocalAITitle"),
       badge: isModelLive ? "Live Sovereign Model" : "On-Premise Ready",
       description: `Runs on-premise (${sovereignty?.model_provider.default_model || "qwen3:8b"} via ${sovereignty?.model_provider.type.toUpperCase() || "OLLAMA"}). No cloud AI, zero external API calls, zero cloud SDK dependencies.`,
     },
     {
       technicalLabel: "02 KNOWLEDGE FABRIC",
-      title: "Local Knowledge",
+      title: t("sovCardLocalKnowledgeTitle"),
       badge: "On-Premise Vector Enclave",
       description: `Private plant documents indexed locally (${runtime.embeddingModel || sovereignty?.embedding_provider.model || "Local Embeddings"}). Zero cloud vector databases. Access strictly bounded by role clearance.`,
     },
     {
       technicalLabel: "03 CONTROLLED TOOLS",
-      title: "Local Tools",
+      title: t("sovCardLocalToolsTitle"),
       badge: "Bounded Execution",
       description: "Industrial actuation, SCADA telemetry queries, and file operations execute inside local sandboxes. Policy gateway intercepts every call before execution.",
     },
     {
       technicalLabel: "04 INDEPENDENT VERIFICATION",
-      title: "Independent Verification",
+      title: t("sovCardVerificationTitle"),
       badge: "Deterministic Code Checks",
       description: "7 discrete verification checks evaluate facts, unit bounds, and calculations using pure Python code. The AI model is never allowed to grade its own work.",
     },
     {
       technicalLabel: "05 LOCAL AUDIT",
-      title: "Local Audit",
+      title: t("sovCardAuditTitle"),
       badge: "Append-Only Local Sink",
       description: "Every question, reasoning trace, tool execution, and verification check is logged to an immutable local file sink. Data never leaves your facility.",
     },
@@ -141,12 +143,11 @@ export function SovereigntyView() {
             </div>
 
             <h1 style={{ fontFamily: "var(--font-display)", fontSize: "38px", color: "var(--ink)", fontWeight: 500, lineHeight: 1.1 }}>
-              Your data stays inside FORGE
+              {t("sovTitle")}
             </h1>
 
             <p style={{ fontFamily: "var(--font-ui)", fontSize: "15px", color: "var(--ink-2)", marginTop: 6, lineHeight: 1.6 }}>
-              All reasoning, plant knowledge, industrial tools, and verification execute strictly on local sovereign hardware.
-              Outside AI cloud services are strictly unconfigured and inaccessible.
+              {t("sovSubtitle")}
             </p>
           </div>
 
@@ -309,7 +310,7 @@ export function SovereigntyView() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <BrassLabel variant="solid">TASK MODEL ROUTER</BrassLabel>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "22px", color: "var(--ink)", fontWeight: 500, margin: 0 }}>
-              Hardware-Aware Local Model Allocation
+              {t("sovModelRouterTitle")}
             </h2>
           </div>
           <span
@@ -343,12 +344,12 @@ export function SovereigntyView() {
           >
             <thead>
               <tr style={{ borderBottom: "1px solid var(--line)", background: "var(--bg-0)" }}>
-                <th style={{ padding: "10px 12px", color: "var(--brass)" }}>TASK TYPE</th>
-                <th style={{ padding: "10px 12px", color: "var(--ink)" }}>TARGET MODEL</th>
+                <th style={{ padding: "10px 12px", color: "var(--brass)" }}>{t("sovRouterColTask")}</th>
+                <th style={{ padding: "10px 12px", color: "var(--ink)" }}>{t("sovRouterColModel")}</th>
                 <th style={{ padding: "10px 12px", color: "var(--ink-2)" }}>PROVIDER</th>
                 <th style={{ padding: "10px 12px", color: "var(--ink-2)" }}>STATUS</th>
-                <th style={{ padding: "10px 12px", color: "var(--ink-2)" }}>VRAM PROFILE</th>
-                <th style={{ padding: "10px 12px", color: "var(--ink-2)" }}>ROUTING REASON & CONSTRAINTS</th>
+                <th style={{ padding: "10px 12px", color: "var(--ink-2)" }}>{t("sovRouterColVram")}</th>
+                <th style={{ padding: "10px 12px", color: "var(--ink-2)" }}>{t("sovRouterColRationale")}</th>
               </tr>
             </thead>
             <tbody>

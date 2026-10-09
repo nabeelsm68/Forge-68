@@ -7,6 +7,7 @@ import {
   BrassLabel,
   Divider,
 } from "@/components/primitives";
+import { useTranslation } from "@/lib/i18n";
 
 interface EvidencePanelProps {
   evidenceSet?: EvidenceSet | null;
@@ -19,8 +20,9 @@ export function EvidencePanel({
   evidenceSet,
   evidenceList,
   calculations = [],
-  title = "Evidence Dossier",
+  title,
 }: EvidencePanelProps) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<"ALL" | "DOCUMENT" | "TOOL" | "VISUAL" | "CALCULATION">("ALL");
 
   // Gather items
@@ -64,28 +66,28 @@ export function EvidencePanel({
       >
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <BrassLabel variant="outline">WHAT SUPPORTS THIS ANSWER?</BrassLabel>
+            <BrassLabel variant="outline">{t("evidenceDossierSubtitle")}</BrassLabel>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              MULTI-SOURCE EVIDENCE DOSSIER
+              {t("evidenceDossierSubtitle")}
             </span>
           </div>
 
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: "26px", color: "var(--ink)", fontWeight: 500 }}>
-            {title || "What supports this answer?"}
+            {title || t("evidenceDossierTitle")}
           </h2>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: "13.5px", color: "var(--ink-2)", marginTop: 2 }}>
-            Every claim is tied to verifiable evidence: documented plant procedures, sandboxed tools, analog gauges, or deterministic math.
+            {t("evidenceDossierDesc")}
           </p>
         </div>
 
         {/* Filter Pills */}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {[
-            { id: "ALL", label: "All Evidence" },
-            { id: "DOCUMENT", label: "Plant Procedures" },
-            { id: "TOOL", label: "Sensor Readings" },
-            { id: "VISUAL", label: "Gauges & Vision" },
-            { id: "CALCULATION", label: "Independent Math" },
+            { id: "ALL", label: t("evidenceFilterAll") },
+            { id: "DOCUMENT", label: t("evidenceFilterDoc") },
+            { id: "TOOL", label: t("evidenceFilterTool") },
+            { id: "VISUAL", label: t("evidenceFilterVisual") },
+            { id: "CALCULATION", label: t("evidenceFilterCalc") },
           ].map((tab) => {
             const isSelected = filter === tab.id;
             return (
@@ -318,7 +320,7 @@ export function EvidencePanel({
       {totalCount === 0 && (
         <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--ink-3)" }}>
           <p style={{ fontFamily: "var(--font-mono)", fontSize: "13px" }}>
-            No evidence records currently match filter criteria.
+            {t("evidenceEmptyTitle")}
           </p>
         </div>
       )}

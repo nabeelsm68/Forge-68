@@ -788,12 +788,16 @@ export interface VoiceEngineStatus {
   tts_engine: string;
   supported_languages: string[];
   installed_models: Record<string, string>;
+  stt_models?: Record<string, string>;
+  tts_voices?: Record<string, string>;
+  installed_voices_details?: Array<{ id: string; name: string; languages?: string[] }>;
+  cloud_providers_configured?: number;
   sovereign_guarantee: string;
   setup_instructions: Record<string, string>;
 }
 
 export interface VoiceTranscribeResponse {
-  status: "SUCCESS" | "ENGINE_UNAVAILABLE" | "ERROR";
+  status: "SUCCESS" | "EMPTY_AUDIO" | "ENGINE_UNAVAILABLE" | "ERROR";
   text: string;
   language: string;
   confidence: number;
@@ -803,11 +807,12 @@ export interface VoiceTranscribeResponse {
 }
 
 export interface VoiceSynthesizeResponse {
-  status: "SUCCESS" | "ENGINE_UNAVAILABLE" | "ERROR";
+  status: "SUCCESS" | "VOICE_UNAVAILABLE" | "ENGINE_UNAVAILABLE" | "ERROR";
   audio_format: string;
   audio_base64?: string;
   engine: string;
   language: string;
+  voice_name?: string;
   error_message?: string;
 }
 
@@ -821,7 +826,7 @@ export async function transcribeVoiceAudio(
 ): Promise<VoiceTranscribeResponse> {
   const url = `${BACKEND_URL}/api/v1/voice/transcribe`;
   const formData = new FormData();
-  formData.append("file", audioBlob, "speech_recording.webm");
+  formData.append("file", audioBlob, "speech_recording.wav");
   formData.append("language", language);
 
   const res = await fetch(url, {

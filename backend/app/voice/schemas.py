@@ -1,7 +1,7 @@
 """Pydantic schemas for Sovereign Local Voice Assistant in FORGE."""
 
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -15,8 +15,8 @@ class VoiceEngineType(str, Enum):
 
 class VoiceEngineStatus(BaseModel):
     """Runtime status of on-premise, zero-cloud speech recognition and synthesis."""
-    stt_available: bool = Field(..., description="Whether a local speech-to-text engine is operational")
-    tts_available: bool = Field(..., description="Whether a local text-to-speech engine is operational")
+    stt_available: bool = Field(..., description="Whether a local speech-to-text engine and model are operational")
+    tts_available: bool = Field(..., description="Whether a local text-to-speech engine and voice are operational")
     stt_engine: str = Field(default="none", description="Active local STT engine identifier")
     tts_engine: str = Field(default="none", description="Active local TTS engine identifier")
     supported_languages: List[str] = Field(default_factory=lambda: ["en", "hi", "kn"])
@@ -25,16 +25,42 @@ class VoiceEngineStatus(BaseModel):
             "en": "not_installed",
             "hi": "not_installed",
             "kn": "not_installed",
-        }
+        },
+        description="Legacy field mapping language to installation status"
+    )
+    stt_models: Dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": "not_installed",
+            "hi": "not_installed",
+            "kn": "not_installed",
+        },
+        description="Per-language speech recognition model availability"
+    )
+    tts_voices: Dict[str, str] = Field(
+        default_factory=lambda: {
+            "en": "not_installed",
+            "hi": "not_installed",
+            "kn": "not_installed",
+        },
+        description="Per-language text-to-speech voice availability"
+    )
+    installed_voices_details: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Diagnostic list of local SAPI5 or Piper voices detected on the host"
+    )
+    cloud_providers_configured: int = Field(
+        default=0,
+        description="Must be strictly 0 in compliance with FORGE Sovereign Architecture"
     )
     sovereign_guarantee: str = Field(
         default="100% On-Premise Sovereign Audio Pipeline. Zero third-party cloud speech APIs, zero telemetry egress."
     )
     setup_instructions: Dict[str, str] = Field(
         default_factory=lambda: {
-            "vosk": "pip install vosk && download vosk-model-small-en-us / hi / kn into data/models/voice/",
-            "whisper_cpp": "Install whisper-cli binary locally and configure FORGE_WHISPER_BIN path.",
-            "piper": "pip install piper-tts && download onnx voices into data/models/voice/piper/",
+            "vosk": "pip install vosk && download model from alphacephei.com/vosk/models into data/models/voice/vosk/{lang}",
+            "whisper_cpp": "Install whisper-cli binary locally and configure WHISPER_CPP_PATH.",
+            "pyttsx3": "Windows SAPI5 offline voices (Windows Settings > Time & Language > Speech > Add Voices for Hindi).",
+            "piper": "pip install piper-tts && place onnx models in data/models/voice/piper/{lang}.onnx",
         }
     )
 
@@ -62,9 +88,10 @@ class VoiceSynthesizeRequest(BaseModel):
 
 class VoiceSynthesizeResponse(BaseModel):
     """Result of sovereign text-to-speech generation."""
-    status: str = Field(..., description="SUCCESS, ENGINE_UNAVAILABLE, or ERROR")
+    status: str = Field(..., description="SUCCESS, VOICE_UNAVAILABLE, ENGINE_UNAVAILABLE, or ERROR")
     audio_format: str = Field(default="wav", description="Generated audio format")
     audio_base64: Optional[str] = Field(default=None, description="Base64 encoded audio payload if successful")
     engine: str = Field(default="none", description="Local engine utilized")
     language: str = Field(default="en", description="Synthesis language")
+    voice_name: Optional[str] = Field(default=None, description="Identifier of the voice utilized")
     error_message: Optional[str] = Field(default=None)

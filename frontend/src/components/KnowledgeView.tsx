@@ -17,12 +17,15 @@ import {
   BrassLabel,
   Divider,
 } from "@/components/primitives";
+import { useTranslation } from "@/lib/i18n";
+import { ReadAloudButton } from "@/components/ReadAloudButton";
 
 interface KnowledgeViewProps {
   clearance: DataClassification;
 }
 
 export function KnowledgeView({ clearance }: KnowledgeViewProps) {
+  const { t } = useTranslation();
   const [docsData, setDocsData] = useState<KnowledgeDocsResponse | null>(null);
   const [isLoadingDocs, setIsLoadingDocs] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("Reactor R-204 operating pressure trip limits");
@@ -281,12 +284,11 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
             </div>
 
             <h1 style={{ fontFamily: "var(--font-display)", fontSize: "38px", color: "var(--ink)", fontWeight: 500, lineHeight: 1.1 }}>
-              Plant Knowledge Fabric
+              {t("knowledgeTitle")}
             </h1>
 
             <p style={{ fontFamily: "var(--font-ui)", fontSize: "15px", color: "var(--ink-2)", marginTop: 6, maxWidth: 680 }}>
-              Private documents FORGE uses for verified industrial evidence. Ingested locally with SHA-256 provenance and strict classification boundaries.
-              Your active clearance is <strong style={{ color: "var(--brass)" }}>{clearance}</strong>.
+              {t("knowledgeSubtitle")}
             </p>
           </div>
 
@@ -296,7 +298,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
               className="btn-brass-primary"
               style={{ fontSize: "12px", padding: "8px 16px" }}
             >
-              + Upload Local Document
+              {t("knowledgeUploadButton")}
             </button>
             <button
               onClick={loadDocuments}
@@ -350,7 +352,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
               className="btn-brass-primary"
               style={{ padding: "12px 24px", fontSize: "13px" }}
             >
-              {isSearching ? "Searching..." : "Search Records ▶"}
+              {isSearching ? "Searching..." : t("knowledgeSearchButton")}
             </button>
           </div>
 
@@ -677,13 +679,18 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                       padding: "16px 18px",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--sage)", fontWeight: 600 }}>
-                        TOP RETRIEVED SYNTHESIS
-                      </span>
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-                        Synthesized from private plant records
-                      </span>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--sage)", fontWeight: 600 }}>
+                          {t("knowledgeSynthesisTitle")}
+                        </span>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
+                          {t("knowledgeSynthesisSubtitle")}
+                        </span>
+                      </div>
+                      <ReadAloudButton
+                        text={`${summary?.headline || ""} ${summary?.detail || ""}`}
+                      />
                     </div>
 
                     <p style={{ fontFamily: "var(--font-ui)", fontSize: "15px", fontWeight: 600, color: "var(--ink)", lineHeight: 1.45, marginBottom: 6 }}>
@@ -710,10 +717,10 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                       }}
                     >
                       <span>
-                        Primary Source: <strong style={{ color: "var(--brass)" }}>{String(summary?.source || "plant_archive")}</strong>
+                        {t("knowledgePrimarySource")} <strong style={{ color: "var(--brass)" }}>{String(summary?.source || "plant_archive")}</strong>
                       </span>
                       <span style={{ color: "var(--sage)" }}>
-                        ✓ 100% on-premise local data
+                        {t("knowledgeOnPremData")}
                       </span>
                     </div>
                   </div>
@@ -722,7 +729,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
 
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", letterSpacing: "0.06em" }}>
-                  RETRIEVED PASSAGES ({searchResults.results.length})
+                  {t("knowledgeRetrievedPassages")} ({searchResults.results.length})
                 </span>
                 <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
               </div>

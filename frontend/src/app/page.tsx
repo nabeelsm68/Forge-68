@@ -247,7 +247,7 @@ export default function Home() {
                         {t("viewEvidence")}
                       </h2>
                       <p style={{ fontFamily: "var(--font-ui)", fontSize: "14px", color: "var(--ink-2)", marginTop: 2 }}>
-                        Multi-source evidence records across Document Chunks, Sandboxed Tool Executions, Visual Inspections, and Deterministic Calculations.
+                        {t("evidenceDossierDesc")}
                       </p>
                     </div>
                     {!lastResponse && (
@@ -279,8 +279,7 @@ export default function Home() {
                         {t("viewVerification")}
                       </h2>
                       <p style={{ fontFamily: "var(--font-ui)", fontSize: "14px", color: "var(--ink-2)", marginTop: 2 }}>
-                        Deterministic verification checking provenance, completeness, policy compliance, parameter consistency,
-                        and mathematical calculations without LLM self-evaluation.
+                        {t("verificationGatewayDesc")}
                       </p>
                     </div>
                     {!lastResponse && (
