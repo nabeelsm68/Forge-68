@@ -25,7 +25,7 @@ interface KnowledgeViewProps {
 }
 
 export function KnowledgeView({ clearance }: KnowledgeViewProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [docsData, setDocsData] = useState<KnowledgeDocsResponse | null>(null);
   const [isLoadingDocs, setIsLoadingDocs] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("Reactor R-204 operating pressure trip limits");
@@ -122,7 +122,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
     setIsSearching(true);
     setSearchError(null);
     try {
-      const res = await searchKnowledge(searchQuery.trim(), 5, clearance);
+      const res = await searchKnowledge(searchQuery.trim(), 5, clearance, language, true);
       setSearchResults(res);
     } catch (err: unknown) {
       setSearchError(err instanceof Error ? err.message : String(err));
@@ -667,9 +667,17 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
 
           {searchResults && searchResults.results.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* Human-Readable Answer Card */}
+              {/* Grounded Synthesis / Human-Readable Answer Card */}
               {(() => {
+                const hasSynthesized = !!(searchResults.synthesized_answer && searchResults.synthesized_answer.trim());
                 const summary = getSearchAnswerSummary(searchResults.results);
+                const answerText = hasSynthesized
+                  ? searchResults.synthesized_answer!
+                  : `${summary?.headline || ""} ${summary?.detail || ""}`;
+                const citedSources = searchResults.cited_sources && searchResults.cited_sources.length > 0
+                  ? searchResults.cited_sources
+                  : [summary?.source || "plant_archive"];
+
                 return (
                   <div
                     style={{
@@ -679,27 +687,56 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                       padding: "16px 18px",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--sage)", fontWeight: 600 }}>
                           {t("knowledgeSynthesisTitle")}
                         </span>
                         <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
                           {t("knowledgeSynthesisSubtitle")}
                         </span>
+                        {citedSources.map((src, sIdx) => (
+                          <span
+                            key={sIdx}
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              fontSize: "10px",
+                              color: "var(--brass)",
+                              background: "rgba(200, 169, 126, 0.12)",
+                              border: "1px solid var(--brass)",
+                              borderRadius: "var(--radius-pill)",
+                              padding: "1px 6px",
+                            }}
+                          >
+                            {src}
+                          </span>
+                        ))}
                       </div>
-                      <ReadAloudButton
-                        text={`${summary?.headline || ""} ${summary?.detail || ""}`}
-                      />
+                      <ReadAloudButton text={answerText} />
                     </div>
 
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: "15px", fontWeight: 600, color: "var(--ink)", lineHeight: 1.45, marginBottom: 6 }}>
-                      {summary?.headline}
-                    </p>
-
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: "13px", color: "var(--ink-2)", lineHeight: 1.5 }}>
-                      {summary?.detail}
-                    </p>
+                    {hasSynthesized ? (
+                      <div
+                        style={{
+                          fontFamily: "var(--font-ui)",
+                          fontSize: "14px",
+                          color: "var(--ink)",
+                          lineHeight: 1.6,
+                          whiteSpace: "pre-line",
+                        }}
+                      >
+                        {answerText}
+                      </div>
+                    ) : (
+                      <>
+                        <p style={{ fontFamily: "var(--font-ui)", fontSize: "15px", fontWeight: 600, color: "var(--ink)", lineHeight: 1.45, marginBottom: 6 }}>
+                          {summary?.headline}
+                        </p>
+                        <p style={{ fontFamily: "var(--font-ui)", fontSize: "13px", color: "var(--ink-2)", lineHeight: 1.5 }}>
+                          {summary?.detail}
+                        </p>
+                      </>
+                    )}
 
                     <div
                       style={{
@@ -708,7 +745,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                         justifyContent: "space-between",
                         flexWrap: "wrap",
                         gap: 8,
-                        marginTop: 10,
+                        marginTop: 12,
                         paddingTop: 8,
                         borderTop: "1px solid rgba(156, 195, 168, 0.2)",
                         fontFamily: "var(--font-mono)",
@@ -717,7 +754,8 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                       }}
                     >
                       <span>
-                        {t("knowledgePrimarySource")} <strong style={{ color: "var(--brass)" }}>{String(summary?.source || "plant_archive")}</strong>
+                        {t("knowledgePrimarySource")}{" "}
+                        <strong style={{ color: "var(--brass)" }}>{String(citedSources[0] || "plant_archive")}</strong>
                       </span>
                       <span style={{ color: "var(--sage)" }}>
                         {t("knowledgeOnPremData")}

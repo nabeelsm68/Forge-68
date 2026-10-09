@@ -50,6 +50,14 @@ class VoiceEngineStatus(BaseModel):
         default_factory=list,
         description="Diagnostic list of local SAPI5 or Piper voices detected on the host"
     )
+    models_loaded: Dict[str, bool] = Field(
+        default_factory=lambda: {"en": False, "hi": False, "kn": False},
+        description="Whether models are actively loaded in memory"
+    )
+    inference_tested: Dict[str, bool] = Field(
+        default_factory=lambda: {"en": False, "hi": False, "kn": False},
+        description="Whether actual inference has completed successfully"
+    )
     cloud_providers_configured: int = Field(
         default=0,
         description="Must be strictly 0 in compliance with FORGE Sovereign Architecture"
@@ -96,4 +104,5 @@ class VoiceSynthesizeResponse(BaseModel):
     engine: str = Field(default="none", description="Local engine utilized")
     language: str = Field(default="en", description="Synthesis language")
     voice_name: Optional[str] = Field(default=None, description="Identifier of the voice utilized")
+    duration_ms: float = Field(default=0.0, description="Synthesis generation duration in milliseconds")
     error_message: Optional[str] = Field(default=None)

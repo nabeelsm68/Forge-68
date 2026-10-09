@@ -2,7 +2,7 @@
 
 import json
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from app.core.schemas import AgentPlan, ModelToolDecision
 from app.tools.base import ToolMetadata
 
@@ -81,13 +81,13 @@ AVAILABLE LOCAL KNOWLEDGE FABRIC:
 
 MANDATORY RULES:
 1. You MUST respond with ONLY a valid, parseable JSON object matching the AgentPlan schema.
-2. Actions: "direct", "knowledge", "tool", or "combined".
-3. For "direct": Provide "direct_answer" and/or "reasoning".
-4. For "knowledge": Provide "knowledge_queries" with at least one targeted search query.
+2. PLANT ASSET RULE: If the user's inquiry asks about ANY industrial plant asset or equipment (such as Reactor R-204, PI-204, Pump P-201, E-301, operating pressure, limits, SOP, inspection, maintenance, or how the reactor/equipment works or operates), you MUST choose "knowledge" or "combined", NOT "direct".
+3. For "direct": Use ONLY for general greetings or abstract math. Provide "direct_answer".
+4. For "knowledge": Provide "knowledge_queries" with at least one targeted search query (e.g. targeting R-204 SOP or technical specifications).
 5. For "tool": Provide "tool_calls" with authorized tool name and arguments from the catalog.
 6. For "combined": Provide both "knowledge_queries" AND "tool_calls".
 7. NEVER invent arbitrary tool names. Only select registered tools from the catalog.
-8. NEVER output executable code, shell syntax, Python scripts, or text outside the JSON object.
+8. Keep "reasoning" very concise (under 20 words). NEVER output markdown explanations outside the JSON object.
 
 JSON SCHEMA FORMAT:
 {{
@@ -106,7 +106,7 @@ JSON SCHEMA FORMAT:
       }}
     }}
   ],
-  "reasoning": "<concise engineering justification>",
+  "reasoning": "<short concise justification>",
   "direct_answer": "<direct response if action is direct, otherwise null>"
 }}
 """
@@ -191,14 +191,53 @@ def _extract_outermost_json(raw_output: str) -> str:
     return cleaned
 
 
-def parse_agent_plan(raw_output: str) -> AgentPlan:
+def _try_repair_json(text: str) -> Optional[Dict[str, Any]]:
+    """Defensively repair truncated JSON strings, unclosed quotes, or missing closing brackets."""
+    candidate = text.strip()
+    # Check if string literal was cut off
+    quote_count = candidate.count('"') - candidate.count(r'\"')
+    if quote_count % 2 != 0:
+        candidate += '"'
+    # Check braces and brackets balance
+    open_cur = candidate.count("{") - candidate.count("}")
+    open_sq = candidate.count("[") - candidate.count("]")
+    if open_sq > 0:
+        candidate += "]" * open_sq
+    if open_cur > 0:
+        candidate += "}" * open_cur
+    try:
+        parsed = json.loads(candidate)
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception:
+        pass
+    return None
+
+
+def parse_agent_plan(raw_output: str, fallback_query: Optional[str] = None) -> AgentPlan:
     """Defensively parse and validate machine-readable AgentPlan JSON from local model."""
     cleaned = _extract_outermost_json(raw_output)
 
     try:
         data = json.loads(cleaned)
     except json.JSONDecodeError as err:
-        raise ValueError(f"Model output is not valid JSON: {str(err)}. Raw: {raw_output[:200]}") from err
+        repaired = _try_repair_json(cleaned)
+        if repaired is not None:
+            data = repaired
+        else:
+            # Check for regex-extractable action
+            action_m = re.search(r'"action"\s*:\s*"([^"]+)"', cleaned, re.IGNORECASE)
+            act_str = action_m.group(1).lower() if action_m else ""
+            if act_str in ("knowledge", "tool", "combined", "direct"):
+                query_m = re.search(r'"query"\s*:\s*"([^"]+)"', cleaned)
+                q_text = query_m.group(1) if query_m else (fallback_query or "R-204 operational specification")
+                data = {
+                    "action": act_str,
+                    "knowledge_queries": [{"query": q_text, "classification": "INTERNAL"}] if act_str in ("knowledge", "combined") else [],
+                    "reasoning": "Recovered structured plan from model execution stream.",
+                }
+            else:
+                raise ValueError(f"Model output is not valid JSON: {str(err)}. Raw: {raw_output[:200]}") from err
 
     if not isinstance(data, dict):
         raise ValueError(f"Model output JSON must be an object/dict, got {type(data).__name__}.")

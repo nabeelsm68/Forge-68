@@ -327,6 +327,9 @@ export interface KnowledgeSearchResponse {
   total_results: number;
   results: RetrievalResult[];
   evidence: EvidenceRecord[];
+  synthesized_answer?: string;
+  cited_sources?: string[];
+  language?: string;
 }
 
 export interface ToolMetadata {
@@ -385,30 +388,49 @@ export async function fetchModels(): Promise<ModelsResponse> {
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
-async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${BACKEND_URL}${endpoint}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-  if (!res.ok) {
-    let errorDetail = `HTTP ${res.status}`;
-    try {
-      const errJson = await res.json();
-      errorDetail = errJson.detail || JSON.stringify(errJson);
-    } catch {
-      // fallback
-    }
-    throw new Error(errorDetail);
-  }
-
-  return res.json();
+export interface ApiFetchOptions extends RequestInit {
+  timeoutMs?: number;
 }
+
+async function apiFetch<T>(endpoint: string, options: ApiFetchOptions = {}): Promise<T> {
+  const { timeoutMs = 30000, ...fetchOptions } = options;
+  const url = `${BACKEND_URL}${endpoint}`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(url, {
+      ...fetchOptions,
+      signal: fetchOptions.signal || controller.signal,
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        ...fetchOptions.headers,
+      },
+    });
+
+    if (!res.ok) {
+      let errorDetail = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        errorDetail = errJson.detail || JSON.stringify(errJson);
+      } catch {
+        // fallback
+      }
+      throw new Error(errorDetail);
+    }
+
+    return res.json();
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Request to ${endpoint} timed out after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 
 export async function fetchHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>("/health");
@@ -433,7 +455,9 @@ export async function fetchKnowledgeDocuments(): Promise<KnowledgeDocsResponse> 
 export async function searchKnowledge(
   query: string,
   top_k: number = 5,
-  classification?: DataClassification
+  classification?: DataClassification,
+  language?: "en" | "hi" | "kn",
+  synthesize: boolean = true
 ): Promise<KnowledgeSearchResponse> {
   return apiFetch<KnowledgeSearchResponse>("/api/v1/knowledge/search", {
     method: "POST",
@@ -441,7 +465,10 @@ export async function searchKnowledge(
       query,
       top_k,
       classification,
+      language,
+      synthesize,
     }),
+    timeoutMs: 60000,
   });
 }
 
@@ -459,6 +486,7 @@ export async function ingestKnowledgeDocument(
       document_type,
       equipment_ids,
     }),
+    timeoutMs: 30000,
   });
 }
 
@@ -466,6 +494,7 @@ export async function queryAgent(request: AgentQueryRequest): Promise<AgentQuery
   return apiFetch<AgentQueryResponse>("/api/v1/agent/query", {
     method: "POST",
     body: JSON.stringify(request),
+    timeoutMs: 120000,
   });
 }
 
@@ -473,6 +502,7 @@ export async function analyzeVision(request: VisionAnalyzeRequest): Promise<Visi
   return apiFetch<VisionAnalyzeResponse>("/api/v1/vision/analyze", {
     method: "POST",
     body: JSON.stringify(request),
+    timeoutMs: 90000,
   });
 }
 
@@ -594,6 +624,7 @@ export async function runDemoScenario(request: DemoRunRequest): Promise<DemoRunR
   return apiFetch<DemoRunResponse>("/api/v1/demo/run", {
     method: "POST",
     body: JSON.stringify(request),
+    timeoutMs: 120000,
   });
 }
 
@@ -790,7 +821,9 @@ export interface VoiceEngineStatus {
   installed_models: Record<string, string>;
   stt_models?: Record<string, string>;
   tts_voices?: Record<string, string>;
-  installed_voices_details?: Array<{ id: string; name: string; languages?: string[] }>;
+  installed_voices_details?: Array<{ id: string; name: string; languages?: string[]; engine?: string }>;
+  models_loaded?: Record<string, boolean>;
+  inference_tested?: Record<string, boolean>;
   cloud_providers_configured?: number;
   sovereign_guarantee: string;
   setup_instructions: Record<string, string>;
@@ -817,7 +850,7 @@ export interface VoiceSynthesizeResponse {
 }
 
 export async function fetchVoiceStatus(): Promise<VoiceEngineStatus> {
-  return apiFetch<VoiceEngineStatus>("/api/v1/voice/status");
+  return apiFetch<VoiceEngineStatus>("/api/v1/voice/status", { timeoutMs: 4000 });
 }
 
 export async function transcribeVoiceAudio(
@@ -829,15 +862,28 @@ export async function transcribeVoiceAudio(
   formData.append("file", audioBlob, "speech_recording.wav");
   formData.append("language", language);
 
-  const res = await fetch(url, {
-    method: "POST",
-    body: formData,
-  });
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || `Audio transcription failed with HTTP ${res.status}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      body: formData,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText || `Audio transcription failed with HTTP ${res.status}`);
+    }
+    return res.json();
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Local speech transcription timed out after 60000ms");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return res.json();
 }
 
 export async function synthesizeVoiceSpeech(
@@ -847,6 +893,7 @@ export async function synthesizeVoiceSpeech(
   return apiFetch<VoiceSynthesizeResponse>("/api/v1/voice/synthesize", {
     method: "POST",
     body: JSON.stringify({ text, language }),
+    timeoutMs: 60000,
   });
 }
 

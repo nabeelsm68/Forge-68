@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { EnamelSurface, SectionHeader, BrassLabel } from "./primitives";
 import { useTranslation } from "@/lib/i18n";
+import { ROLE_PERMISSIONS } from "@/lib/permissions";
 
 interface GovernanceViewProps {
   role?: string;
@@ -41,53 +42,15 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
     };
   }, []);
 
-  const permissionMatrix = [
-    {
-      role: "ENGINEER",
-      clearance: "CONFIDENTIAL",
-      read: "✓ Allowed",
-      investigate: "✓ Allowed",
-      actuate: "⚠ Approval required",
-      admin: "✕ Blocked",
-      summary: "Read plant data & SOPs, run investigations, read-only tools. Critical actuation requires approval. Admin actions blocked.",
-    },
-    {
-      role: "INSPECTOR",
-      clearance: "INTERNAL",
-      read: "✓ Allowed",
-      investigate: "✓ Allowed",
-      actuate: "✕ Blocked",
-      admin: "✕ Blocked",
-      summary: "Read inspection & telemetry data, run investigations. Actuation blocked. Admin actions blocked.",
-    },
-    {
-      role: "AI OPERATOR",
-      clearance: "RESTRICTED",
-      read: "✓ Allowed",
-      investigate: "✓ Allowed",
-      actuate: "✕ Blocked",
-      admin: "✕ Blocked",
-      summary: "Approved read & investigation access. Zero write authority. Actuation blocked. Admin actions blocked.",
-    },
-    {
-      role: "ADMIN",
-      clearance: "CRITICAL",
-      read: "✓ Allowed",
-      investigate: "✓ Allowed",
-      actuate: "⚠ Approval required",
-      admin: "✓ Allowed",
-      summary: "Broadest access. Critical actions require appropriate approval. Administrative controls available.",
-    },
-    {
-      role: "SECURITY OFFICER",
-      clearance: "CRITICAL",
-      read: "✓ Allowed",
-      investigate: "✓ Allowed",
-      actuate: "✕ Blocked",
-      admin: "✕ Blocked",
-      summary: "Audit & security visibility. Plant actuation blocked. Administrative override blocked.",
-    },
-  ];
+  const permissionMatrix = Object.values(ROLE_PERMISSIONS).map((p) => ({
+    role: p.role,
+    clearance: p.defaultClearance,
+    read: p.read === "ALLOWED" ? "✓ Allowed" : "✕ Blocked",
+    investigate: p.investigate === "ALLOWED" ? "✓ Allowed" : "✕ Blocked",
+    actuate: p.actuate === "ALLOWED" ? "✓ Allowed" : p.actuate === "NEEDS_APPROVAL" ? "⚠ Approval required" : "✕ Blocked",
+    admin: p.admin === "ALLOWED" ? "✓ Allowed" : p.admin === "NEEDS_APPROVAL" ? "⚠ Approval required" : "✕ Blocked",
+    summary: p.summary,
+  }));
 
   const getStatusBadge = (status: string) => {
     if (status.includes("✓ Allowed") || status.includes("Allowed") || status.includes("अनुमत") || status.includes("ಅನುಮತಿಸಲಾಗಿದೆ")) {

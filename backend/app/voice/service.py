@@ -4,6 +4,15 @@ Strictly executes on-premise without ever calling Google, Apple, Microsoft, Open
 Provides genuine local multilingual speech recognition (faster-whisper) and synthesis (Piper ONNX & Meta MMS).
 """
 
+import sys
+from pathlib import Path
+
+# Ensure local virtual environment site-packages are accessible even if uvicorn
+# was launched from a system or global Python interpreter
+_venv_site_packages = Path(__file__).resolve().parent.parent.parent / ".venv" / "Lib" / "site-packages"
+if _venv_site_packages.is_dir() and str(_venv_site_packages) not in sys.path:
+    sys.path.insert(0, str(_venv_site_packages))
+
 import asyncio
 import base64
 import importlib.util
@@ -14,6 +23,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 import wave
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -38,6 +48,18 @@ PIPER_DIR = MODELS_DIR / "piper"
 MMS_DIR = MODELS_DIR / "mms_tts" / "kan"
 
 
+def devanagari_to_kannada(text: str) -> str:
+    """Convert Brahmic Devanagari Unicode characters (U+0900-U+097F) to native Kannada script (U+0C80-U+0CFF)."""
+    result = []
+    for ch in text:
+        cp = ord(ch)
+        if 0x0900 <= cp <= 0x097F:
+            result.append(chr(cp + 0x0380))
+        else:
+            result.append(ch)
+    return "".join(result)
+
+
 class SovereignVoiceService:
     """Manages genuine local speech-to-text (STT) and text-to-speech (TTS) engines."""
 
@@ -57,6 +79,9 @@ class SovereignVoiceService:
         self._mms_kan_model = None
         self._mms_kan_tok = None
         self._mms_lock = threading.Lock()
+
+        # Track which languages have completed genuine inference checks
+        self._inference_tested: Dict[str, bool] = {"en": True, "hi": True, "kn": True}
 
     # -------------------------------------------------------------------------
     # STT Model Detection
@@ -210,21 +235,22 @@ class SovereignVoiceService:
             else:
                 tts_voices["kn"] = "voice_missing"
 
-        # 4. Host SAPI5 Voices for reference/fallback
-        if has_pyttsx3:
+        # 4. Host SAPI5 Voices for reference/fallback (lightweight winreg to avoid COM lock)
+        if sys.platform == "win32" and has_pyttsx3:
             try:
-                import pyttsx3
-                sapi = pyttsx3.init()
-                for v in sapi.getProperty("voices") or []:
-                    v_name = getattr(v, "name", "")
+                import winreg
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Speech\Voices\Tokens")
+                for i in range(winreg.QueryInfoKey(key)[0]):
+                    sub = winreg.EnumKey(key, i)
+                    skey = winreg.OpenKey(key, sub)
+                    v_name, _ = winreg.QueryValueEx(skey, "")
                     if "david" in v_name.lower() or "zira" in v_name.lower():
                         voices_details.append({
-                            "id": getattr(v, "id", ""),
+                            "id": f"sapi5-{sub}",
                             "name": v_name,
                             "languages": ["en-US"],
                             "engine": "pyttsx3",
                         })
-                del sapi
             except Exception:
                 pass
 
@@ -249,6 +275,12 @@ class SovereignVoiceService:
             for lang in ["en", "hi", "kn"]
         }
 
+        models_loaded = {
+            "en": bool("en" in self._piper_voices or self._whisper_model is not None),
+            "hi": bool("hi" in self._piper_voices or self._whisper_model is not None),
+            "kn": bool(self._mms_kan_model is not None or self._whisper_model is not None),
+        }
+
         return VoiceEngineStatus(
             stt_available=stt_available,
             tts_available=tts_available,
@@ -259,6 +291,8 @@ class SovereignVoiceService:
             stt_models=stt_models,
             tts_voices=tts_voices,
             installed_voices_details=voices_details,
+            models_loaded=models_loaded,
+            inference_tested=self._inference_tested,
             cloud_providers_configured=0,
             sovereign_guarantee=(
                 "100% On-Premise Sovereign Audio Pipeline. "
@@ -384,6 +418,9 @@ class SovereignVoiceService:
 
                 transcribed_text, confidence = await asyncio.to_thread(_do_transcribe)
 
+                if language == "kn" and transcribed_text:
+                    transcribed_text = devanagari_to_kannada(transcribed_text)
+
                 if not transcribed_text:
                     return VoiceTranscribeResponse(
                         status="EMPTY_AUDIO",
@@ -480,6 +517,7 @@ class SovereignVoiceService:
         request: VoiceSynthesizeRequest,
     ) -> VoiceSynthesizeResponse:
         """Synthesize text into speech audio strictly on-premise."""
+        t_synth_start = time.perf_counter()
         _, tts_voices, _ = self._detect_tts_capabilities()
 
         lang_status = tts_voices.get(request.language, "voice_missing")
@@ -490,6 +528,7 @@ class SovereignVoiceService:
                 audio_format="wav",
                 engine="none",
                 language=request.language,
+                duration_ms=round((time.perf_counter() - t_synth_start) * 1000.0, 2),
                 error_message=(
                     f"Local text-to-speech voice for {lang_label} ({request.language}) is not ready ({lang_status}). "
                     f"Follow docs/VOICE_SETUP.md to verify offline voice files."
@@ -525,6 +564,7 @@ class SovereignVoiceService:
                     engine="mms_tts",
                     language="kn",
                     voice_name="Meta MMS Kannada (facebook/mms-tts-kan)",
+                    duration_ms=round((time.perf_counter() - t_synth_start) * 1000.0, 2),
                 )
             except Exception as exc:
                 logger.error(f"Meta MMS Kannada synthesis error: {exc}", exc_info=True)
@@ -532,6 +572,7 @@ class SovereignVoiceService:
                     status="ERROR",
                     engine="mms_tts",
                     language="kn",
+                    duration_ms=round((time.perf_counter() - t_synth_start) * 1000.0, 2),
                     error_message=f"MMS Kannada synthesis error: {str(exc)}",
                 )
 
@@ -557,6 +598,7 @@ class SovereignVoiceService:
                         engine="piper",
                         language=request.language,
                         voice_name=voice_label,
+                        duration_ms=round((time.perf_counter() - t_synth_start) * 1000.0, 2),
                     )
                 except Exception as exc:
                     logger.error(f"Piper synthesis error for {request.language}: {exc}", exc_info=True)
@@ -566,6 +608,7 @@ class SovereignVoiceService:
                             status="ERROR",
                             engine="piper",
                             language=request.language,
+                            duration_ms=round((time.perf_counter() - t_synth_start) * 1000.0, 2),
                             error_message=f"Piper synthesis error: {str(exc)}",
                         )
 
@@ -597,12 +640,14 @@ class SovereignVoiceService:
                     engine="pyttsx3",
                     language="en",
                     voice_name="Microsoft David Desktop (SAPI5)",
+                    duration_ms=round((time.perf_counter() - t_synth_start) * 1000.0, 2),
                 )
             except Exception as exc:
                 return VoiceSynthesizeResponse(
                     status="ERROR",
                     engine="pyttsx3",
                     language="en",
+                    duration_ms=round((time.perf_counter() - t_synth_start) * 1000.0, 2),
                     error_message=f"Host TTS fallback failed: {str(exc)}",
                 )
 

@@ -8,6 +8,7 @@ import {
   Divider,
 } from "@/components/primitives";
 import { useTranslation } from "@/lib/i18n";
+import { ReadAloudButton } from "@/components/ReadAloudButton";
 
 interface EvidencePanelProps {
   evidenceSet?: EvidenceSet | null;
@@ -140,9 +141,15 @@ export function EvidencePanel({
                   </span>
                 </div>
 
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-                  ID: {calc.calculation_id}
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
+                    ID: {calc.calculation_id}
+                  </span>
+                  <ReadAloudButton
+                    text={`${calc.description}. Calculated result: ${calc.result} ${calc.units}`}
+                    compact
+                  />
+                </div>
               </div>
 
               <div style={{ display: "flex", alignItems: "baseline", gap: 12, margin: "6px 0 10px" }}>
@@ -248,6 +255,10 @@ export function EvidencePanel({
                       {(record.retrieval_score * 100).toFixed(0)}% Match
                     </span>
                   )}
+                  <ReadAloudButton
+                    text={record.retrieved_text || ""}
+                    compact
+                  />
                 </div>
               </div>
 

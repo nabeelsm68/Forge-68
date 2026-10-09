@@ -24,6 +24,88 @@ def _format_ist_time(dt_utc: datetime) -> str:
         return dt_utc.strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
+REPORT_TRANSLATIONS: Dict[str, Dict[str, str]] = {
+    "en": {
+        "title": "FORGE Sovereign Industrial Control Plane",
+        "subtitle": "Mission Verification & Industrial Safety Dossier (Air-Gapped Local Runtime)",
+        "meta_run_id": "Execution Run ID:",
+        "meta_scenario": "Mission / Scenario:",
+        "meta_timestamp": "Generated Timestamp:",
+        "meta_clearance_role": "Clearance & Role:",
+        "meta_model_runtime": "Sovereign Runtime:",
+        "meta_verdict": "Independent Verdict:",
+        "sec1_heading": "1. Executive Findings & Operational Verdict",
+        "sec1_verdict": "Operational Verdict:",
+        "sec1_analysis": "Synthesized Technical Analysis:",
+        "sec2_heading": "2. Operational Query & Scope",
+        "sec2_query": "Query:",
+        "sec3_heading": "3. Evidence Grounding Dossier",
+        "sec3_total": "Retrieved Artifacts:",
+        "sec4_heading": "4. Deterministic Verified Calculations",
+        "sec4_no_calcs": "No mathematical calculations triggered for this mission type.",
+        "sec4_verified": "[VERIFIED BY PYTHON DETERMINISTIC KERNEL]",
+        "sec5_heading": "5. Sovereign Policy Gateway & Actuation Boundaries",
+        "sec5_default_deny": "Action evaluated under default-deny industrial policy. Zero boundary violations.",
+        "sec6_heading": "6. Independent 7-Check Verification Results",
+        "sec6_checks_exec": "7 / 7 Verification checks executed and recorded in tamper-evident event log.",
+        "sec7_heading": "7. Enclave Integrity & Local Audit Reference",
+        "sec7_text": "This document was deterministically compiled by the on-premise FORGE Sovereign Industrial AI Control Plane. No data was transmitted to third-party public clouds or external AI providers. Audit reference signature: SHA256:{signature}",
+    },
+    "hi": {
+        "title": "FORGE संप्रभु औद्योगिक नियंत्रण तल",
+        "subtitle": "मिशन सत्यापन एवं औद्योगिक सुरक्षा डोजियर (एयर-गैप्ड स्थानीय रनटाइम)",
+        "meta_run_id": "निष्पादन रन आईडी (Run ID):",
+        "meta_scenario": "मिशन / परिदृश्य:",
+        "meta_timestamp": "उत्पन्न समय (IST):",
+        "meta_clearance_role": "सुरक्षा स्तर एवं भूमिका:",
+        "meta_model_runtime": "संप्रभु रनटाइम:",
+        "meta_verdict": "स्वतंत्र निर्णय:",
+        "sec1_heading": "1. कार्यकारी निष्कर्ष एवं परिचालन निर्णय",
+        "sec1_verdict": "परिचालन निर्णय:",
+        "sec1_analysis": "संश्लेषित तकनीकी विश्लेषण:",
+        "sec2_heading": "2. परिचालन प्रश्न एवं दायरा",
+        "sec2_query": "प्रश्न:",
+        "sec3_heading": "3. साक्ष्य आधार डोजियर",
+        "sec3_total": "पुनर्प्राप्त साक्ष्य कलाकृतियाँ:",
+        "sec4_heading": "4. नियतात्मक सत्यापित गणनाएँ",
+        "sec4_no_calcs": "इस मिशन प्रकार के लिए कोई गणितीय गणना शुरू नहीं की गई।",
+        "sec4_verified": "[पायथन नियतात्मक कर्नेल द्वारा सत्यापित]",
+        "sec5_heading": "5. संप्रभु नीति गेटवे एवं प्रवर्तन सीमाएँ",
+        "sec5_default_deny": "कार्रवाई का मूल्यांकन डिफ़ॉल्ट-अस्वीकार औद्योगिक नीति के तहत किया गया। शून्य सीमा उल्लंघन।",
+        "sec6_heading": "6. स्वतंत्र 7-जांच सत्यापन परिणाम",
+        "sec6_checks_exec": "7 / 7 सत्यापन जाँचें निष्पादित की गईं और छेड़छाड़-रोधी इवेंट लॉग में दर्ज की गईं।",
+        "sec7_heading": "7. एन्क्लेव सत्यनिष्ठा एवं स्थानीय ऑडिट संदर्भ",
+        "sec7_text": "यह दस्तावेज़ ऑन-प्रिमाइसेस FORGE संप्रभु औद्योगिक AI नियंत्रण तल द्वारा संकलित किया गया था। किसी भी तृतीय-पक्ष सार्वजनिक क्लाउड या बाहरी AI प्रदाताओं को कोई डेटा प्रेषित नहीं किया गया। ऑडिट संदर्भ हस्ताक्षर: SHA256:{signature}",
+    },
+    "kn": {
+        "title": "FORGE ಸಾರ್ವಭೌಮ ಕೈಗಾರಿಕಾ ನಿಯಂತ್ರಣ ವೇದಿಕೆ",
+        "subtitle": "ಕಾರ್ಯಾಚರಣೆ ಪರಿಶೀಲನೆ ಮತ್ತು ಕೈಗಾರಿಕಾ ಸುರಕ್ಷತಾ ದಾಖಲೆ (ಏರ್-ಗ್ಯಾಪ್ಡ್ ಸ್ಥಳೀಯ ರನ್‌ಟೈಮ್)",
+        "meta_run_id": "ಚಾಲನೆ ರನ್ ಐಡಿ (Run ID):",
+        "meta_scenario": "ಕಾರ್ಯಾಚರಣೆ / ಸನ್ನಿವೇಶ:",
+        "meta_timestamp": "ರಚಿಸಿದ ಸಮಯ (IST):",
+        "meta_clearance_role": "ಕ್ಲಿಯರೆನ್ಸ್ ಮತ್ತು ಪಾತ್ರ:",
+        "meta_model_runtime": "ಸಾರ್ವಭೌಮ ರನ್‌ಟೈಮ್:",
+        "meta_verdict": "ಸ್ವತಂತ್ರ ತೀರ್ಪು:",
+        "sec1_heading": "1. ಕಾರ್ಯಕಾರಿ ಸಂಶೋಧನೆಗಳು ಮತ್ತು ಕಾರ್ಯಾಚರಣೆಯ ತೀರ್ಪು",
+        "sec1_verdict": "ಕಾರ್ಯಾಚರಣೆಯ ತೀರ್ಪು:",
+        "sec1_analysis": "ಸಂಶ್ಲೇಷಿತ ತಾಂತ್ರಿಕ ವಿಶ್ಲೇಷಣೆ:",
+        "sec2_heading": "2. ಕಾರ್ಯಾಚರಣೆಯ ಪ್ರಶ್ನೆ ಮತ್ತು ವ್ಯಾಪ್ತಿ",
+        "sec2_query": "ಪ್ರಶ್ನೆ:",
+        "sec3_heading": "3. ಪುರಾವೆ ಆಧಾರಿತ ದಾಖಲೆ",
+        "sec3_total": "ಹಿಂಪಡೆಯಲಾದ ಪುರಾವೆ ದಾಖಲೆಗಳು:",
+        "sec4_heading": "4. ನಿರ್ಣಾಯಕ ಪರಿಶೀಲಿಸಿದ ಲೆಕ್ಕಾಚಾರಗಳು",
+        "sec4_no_calcs": "ಈ ಕಾರ್ಯಾಚರಣೆಯ ಪ್ರಕಾರಕ್ಕೆ ಯಾವುದೇ ಗಣಿತದ ಲೆಕ್ಕಾಚಾರಗಳನ್ನು ಪ್ರಚೋದಿಸಲಾಗಿಲ್ಲ.",
+        "sec4_verified": "[ಪೈಥಾನ್ ನಿರ್ಣಾಯಕ ಕರ್ನಲ್‌ನಿಂದ ಪರಿಶೀಲಿಸಲಾಗಿದೆ]",
+        "sec5_heading": "5. ಸಾರ್ವಭೌಮ ನೀತಿ ಗೇಟ್‌ವೇ ಮತ್ತು ಕಾರ್ಯಾಚರಣೆಯ ಮಿತಿಗಳು",
+        "sec5_default_deny": "ಡೀಫಾಲ್ಟ್-ನಿರಾಕರಣೆ ಕೈಗಾರಿಕಾ ನೀತಿಯ ಅಡಿಯಲ್ಲಿ ಕ್ರಿಯೆಯನ್ನು ಮೌಲ್ಯಮಾಪನ ಮಾಡಲಾಗಿದೆ. ಶೂನ್ಯ ಗಡಿ ಉಲ್ಲಂಘನೆ.",
+        "sec6_heading": "6. ಸ್ವತಂತ್ರ 7-ಹಂತದ ಪರಿಶೀಲನಾ ಫಲಿತಾಂಶಗಳು",
+        "sec6_checks_exec": "7 / 7 ಪರಿಶೀಲನಾ ತಪಾಸಣೆಗಳನ್ನು ಕಾರ್ಯಗತಗೊಳಿಸಲಾಗಿದೆ ಮತ್ತು ತಿರುಚುವಿಕೆ-ನಿರೋಧಕ ಇವೆಂಟ್ ಲಾಗ್‌ನಲ್ಲಿ ದಾಖಲಿಸಲಾಗಿದೆ.",
+        "sec7_heading": "7. ಎನ್‌ಕ್ಲೇವ್ ಸಮಗ್ರತೆ ಮತ್ತು ಸ್ಥಳೀಯ ಆಡಿಟ್ ಉಲ್ಲೇಖ",
+        "sec7_text": "ಈ ಡಾಕ್ಯುಮೆಂಟ್ ಅನ್ನು ಆನ್-ಪ್ರೆಮಿಸಸ್ FORGE ಸಾರ್ವಭೌಮ ಕೈಗಾರಿಕಾ AI ನಿಯಂತ್ರಣ ವೇದಿಕೆಯಿಂದ ನಿರ್ಣಾಯಕವಾಗಿ ಸಂಕಲಿಸಲಾಗಿದೆ. ಮೂರನೇ ವ್ಯಕ್ತಿಯ ಸಾರ್ವಜನಿಕ ಕ್ಲೌಡ್‌ಗಳಿಗೆ ಯಾವುದೇ ಡೇಟಾವನ್ನು ರವಾನಿಸಲಾಗಿಲ್ಲ. ಆಡಿಟ್ ಉಲ್ಲೇಖ ಸಹಿ: SHA256:{signature}",
+    },
+}
+
+
 class SovereignReportGenerator:
     """Generates tamper-evident, audit-grade Microsoft Word (.docx) reports for FORGE missions."""
 
@@ -42,17 +124,25 @@ class SovereignReportGenerator:
         from docx.shared import Inches, Pt, RGBColor
         from docx.enum.text import WD_ALIGN_PARAGRAPH
 
+        lang = str(data.get("language") or "en").lower()
+        t = REPORT_TRANSLATIONS.get(lang, REPORT_TRANSLATIONS["en"])
+
         doc = docx.Document()
+        # Set default font for Unicode support (Devanagari & Kannada)
+        try:
+            doc.styles['Normal'].font.name = 'Nirmala UI'
+        except Exception:
+            pass
 
         # Title
         p_title = doc.add_paragraph()
-        run_title = p_title.add_run("FORGE Sovereign Industrial Control Plane")
+        run_title = p_title.add_run(t["title"])
         run_title.bold = True
         run_title.font.size = Pt(20)
         run_title.font.color.rgb = RGBColor(30, 41, 59)
 
         p_sub = doc.add_paragraph()
-        run_sub = p_sub.add_run("Mission Verification & Industrial Safety Dossier")
+        run_sub = p_sub.add_run(t["subtitle"])
         run_sub.font.size = Pt(13)
         run_sub.font.color.rgb = RGBColor(100, 116, 139)
 
@@ -65,12 +155,12 @@ class SovereignReportGenerator:
 
         meta_table = doc.add_table(rows=6, cols=2)
         meta_data = [
-            ("Execution Run ID:", str(run_id)),
-            ("Mission / Scenario:", str(data.get("scenario_id") or data.get("scenario") or "CUSTOM_QUERY")),
-            ("Generated Timestamp:", f"{ist_str} ({now_dt.isoformat()})"),
-            ("Clearance / Role:", f"{data.get('classification', 'INTERNAL')} / {data.get('role', 'ENGINEER')}"),
-            ("Sovereign Model / Runtime:", f"{data.get('model_name', 'qwen3:8b')} ({data.get('provider', 'ollama_local')})"),
-            ("Overall System Verdict:", str(data.get("verdict") or data.get("status") or "VERIFIED")),
+            (t["meta_run_id"], str(run_id)),
+            (t["meta_scenario"], str(data.get("scenario_id") or data.get("scenario") or "CUSTOM_QUERY")),
+            (t["meta_timestamp"], f"{ist_str} ({now_dt.isoformat()})"),
+            (t["meta_clearance_role"], f"{data.get('classification', 'INTERNAL')} / {data.get('role', 'ENGINEER')}"),
+            (t["meta_model_runtime"], f"{data.get('model_name', 'qwen3:8b')} ({data.get('provider', 'ollama_local')})"),
+            (t["meta_verdict"], str(data.get("verdict") or data.get("status") or "VERIFIED")),
         ]
         for idx, (k, v) in enumerate(meta_data):
             row = meta_table.rows[idx]
@@ -82,29 +172,29 @@ class SovereignReportGenerator:
         doc.add_paragraph("")
 
         # Section 1: Executive Findings
-        h1 = doc.add_heading("1. Executive Findings & Operational Verdict", level=1)
+        h1 = doc.add_heading(t["sec1_heading"], level=1)
         h1.paragraph_format.space_before = Pt(14)
         verdict = str(data.get("verdict") or data.get("status") or "COMPLETED")
-        doc.add_paragraph(f"Operational Verdict: {verdict}")
+        doc.add_paragraph(f"{t['sec1_verdict']} {verdict}")
 
         answer = str(data.get("final_answer") or "No narrative recorded.")
         p_ans = doc.add_paragraph()
-        p_ans.add_run("Synthesized Technical Analysis:\n").bold = True
+        p_ans.add_run(f"{t['sec1_analysis']}\n").bold = True
         p_ans.add_run(answer)
 
         # Section 2: Original User Inquiry
-        h2 = doc.add_heading("2. Operational Query & Scope", level=1)
+        h2 = doc.add_heading(t["sec2_heading"], level=1)
         query = str(data.get("query") or "Custom operational assessment.")
-        doc.add_paragraph(f"Query: {query}")
+        doc.add_paragraph(f"{t['sec2_query']} {query}")
 
         # Section 3: Supporting Evidence
-        h3 = doc.add_heading("3. Evidence Grounding Dossier", level=1)
+        h3 = doc.add_heading(t["sec3_heading"], level=1)
         evidence_set = data.get("evidence_set") or {}
         k_evd = evidence_set.get("knowledge_evidence") or []
         t_evd = evidence_set.get("tool_evidence") or []
         v_evd = evidence_set.get("visual_evidence") or []
         total_evd = len(k_evd) + len(t_evd) + len(v_evd)
-        doc.add_paragraph(f"Total Verified Supporting Evidence Artifacts: {total_evd}")
+        doc.add_paragraph(f"{t['sec3_total']} {total_evd}")
 
         for e in k_evd:
             p = doc.add_paragraph()
@@ -122,7 +212,7 @@ class SovereignReportGenerator:
             p.add_run(f"Observed: {e.get('observed_value')} {e.get('unit', '')} (Confidence: {e.get('confidence', 1.0)})")
 
         # Section 4: Calculations
-        h4 = doc.add_heading("4. Deterministic Verified Calculations", level=1)
+        h4 = doc.add_heading(t["sec4_heading"], level=1)
         calcs = data.get("calculations") or []
         if not calcs and data.get("verification"):
             calcs = data["verification"].get("calculations") or []
@@ -131,12 +221,12 @@ class SovereignReportGenerator:
             for idx, c in enumerate(calcs):
                 p = doc.add_paragraph()
                 p.add_run(f"[{idx+1}] {c.get('description') or c.get('calculation_type')}: ").bold = True
-                p.add_run(f"{c.get('result')} {c.get('units', '')} [VERIFIED BY PYTHON DETERMINISTIC KERNEL]")
+                p.add_run(f"{c.get('result')} {c.get('units', '')} {t['sec4_verified']}")
         else:
-            doc.add_paragraph("No mathematical calculations triggered for this mission type.")
+            doc.add_paragraph(t["sec4_no_calcs"])
 
         # Section 5: Policy Decisions
-        h5 = doc.add_heading("5. Sovereign Policy Gateway & Actuation Boundaries", level=1)
+        h5 = doc.add_heading(t["sec5_heading"], level=1)
         p_decisions = data.get("policy_decisions") or []
         if not p_decisions and data.get("policy_decision"):
             p_decisions = [data["policy_decision"]]
@@ -148,10 +238,10 @@ class SovereignReportGenerator:
                 decision = d.get("decision") or ("ALLOW" if d.get("allowed") is True else "DENY")
                 p.add_run(f"DECISION = {decision}. Reason: {d.get('reason') or 'Zero-trust verification'}")
         else:
-            doc.add_paragraph("Action evaluated under default-deny industrial policy. Zero boundary violations.")
+            doc.add_paragraph(t["sec5_default_deny"])
 
         # Section 6: Verification Checks
-        h6 = doc.add_heading("6. Independent 7-Check Verification Results", level=1)
+        h6 = doc.add_heading(t["sec6_heading"], level=1)
         checks = []
         if data.get("verification") and data["verification"].get("checks"):
             checks = data["verification"]["checks"]
@@ -163,15 +253,11 @@ class SovereignReportGenerator:
                 status_str = chk.get("status", "VERIFIED")
                 p.add_run(f"{status_str} ― {chk.get('description', '')}")
         else:
-            doc.add_paragraph("7 / 7 Verification checks executed and recorded in tamper-evident event log.")
+            doc.add_paragraph(t["sec6_checks_exec"])
 
         # Section 7: Audit Reference
-        h7 = doc.add_heading("7. Enclave Integrity & Local Audit Reference", level=1)
-        doc.add_paragraph(
-            "This document was deterministically compiled by the on-premise FORGE Sovereign Industrial AI Control Plane. "
-            "No data was transmitted to third-party public clouds or external AI providers. "
-            f"Audit reference signature: SHA256:{uuid.uuid4().hex}"
-        )
+        h7 = doc.add_heading(t["sec7_heading"], level=1)
+        doc.add_paragraph(t["sec7_text"].format(signature=uuid.uuid4().hex))
 
         buf = io.BytesIO()
         doc.save(buf)
@@ -179,6 +265,9 @@ class SovereignReportGenerator:
 
     def _generate_native_openxml_docx(self, data: Dict[str, Any]) -> bytes:
         """Render a 100% valid Microsoft Word OpenXML (.docx) ZIP archive using native standard library."""
+        lang = str(data.get("language") or "en").lower()
+        t = REPORT_TRANSLATIONS.get(lang, REPORT_TRANSLATIONS["en"])
+
         run_id = xml_escape(str(data.get("run_id") or "run-unknown"))
         scenario = xml_escape(str(data.get("scenario_id") or data.get("scenario") or "CUSTOM_QUERY"))
         now_dt = datetime.now(timezone.utc)
@@ -192,17 +281,19 @@ class SovereignReportGenerator:
         query = xml_escape(str(data.get("query") or "Custom operational assessment."))
         final_answer = xml_escape(str(data.get("final_answer") or "No narrative recorded."))
 
-        # Format paragraphs for XML
+        font_family = "Nirmala UI"
+
+        # Format paragraphs for XML with Nirmala UI font for native complex script rendering
         def xml_para(text: str, bold_prefix: str = "", font_size: int = 22, color: str = "1E293B") -> str:
             runs = []
             if bold_prefix:
                 runs.append(
-                    f'<w:r><w:rPr><w:b/><w:sz w:val="{font_size}"/><w:color w:val="{color}"/></w:rPr>'
+                    f'<w:r><w:rPr><w:rFonts w:ascii="{font_family}" w:hAnsi="{font_family}" w:cs="{font_family}"/><w:b/><w:sz w:val="{font_size}"/><w:color w:val="{color}"/></w:rPr>'
                     f'<w:t xml:space="preserve">{xml_escape(bold_prefix)} </w:t></w:r>'
                 )
             if text:
                 runs.append(
-                    f'<w:r><w:rPr><w:sz w:val="{font_size}"/><w:color w:val="{color}"/></w:rPr>'
+                    f'<w:r><w:rPr><w:rFonts w:ascii="{font_family}" w:hAnsi="{font_family}" w:cs="{font_family}"/><w:sz w:val="{font_size}"/><w:color w:val="{color}"/></w:rPr>'
                     f'<w:t xml:space="preserve">{xml_escape(text)}</w:t></w:r>'
                 )
             return f'<w:p><w:pPr><w:spacing w:after="160"/></w:pPr>{"".join(runs)}</w:p>'
@@ -211,7 +302,7 @@ class SovereignReportGenerator:
             sz = 32 if level == 1 else 26
             return (
                 f'<w:p><w:pPr><w:spacing w:before="300" w:after="160"/></w:pPr>'
-                f'<w:r><w:rPr><w:b/><w:sz w:val="{sz}"/><w:color w:val="0F172A"/></w:rPr>'
+                f'<w:r><w:rPr><w:rFonts w:ascii="{font_family}" w:hAnsi="{font_family}" w:cs="{font_family}"/><w:b/><w:sz w:val="{sz}"/><w:color w:val="0F172A"/></w:rPr>'
                 f'<w:t>{xml_escape(title)}</w:t></w:r></w:p>'
             )
 
@@ -220,44 +311,41 @@ class SovereignReportGenerator:
 
         # Document Header
         body_xml.append(
-            '<w:p><w:pPr><w:spacing w:after="80"/></w:pPr>'
-            '<w:r><w:rPr><w:b/><w:sz w:val="44"/><w:color w:val="1E293B"/></w:rPr>'
-            '<w:t>FORGE Sovereign Industrial Control Plane</w:t></w:r></w:p>'
+            f'<w:p><w:pPr><w:spacing w:after="80"/></w:pPr>'
+            f'<w:r><w:rPr><w:rFonts w:ascii="{font_family}" w:hAnsi="{font_family}" w:cs="{font_family}"/><w:b/><w:sz w:val="44"/><w:color w:val="1E293B"/></w:rPr>'
+            f'<w:t>{xml_escape(t["title"])}</w:t></w:r></w:p>'
         )
         body_xml.append(
-            '<w:p><w:pPr><w:spacing w:after="240"/></w:pPr>'
-            '<w:r><w:rPr><w:sz w:val="26"/><w:color w:val="64748B"/></w:rPr>'
-            '<w:t>Mission Verification &amp; Industrial Safety Dossier (Air-Gapped Local Runtime)</w:t></w:r></w:p>'
+            f'<w:p><w:pPr><w:spacing w:after="240"/></w:pPr>'
+            f'<w:r><w:rPr><w:rFonts w:ascii="{font_family}" w:hAnsi="{font_family}" w:cs="{font_family}"/><w:sz w:val="26"/><w:color w:val="64748B"/></w:rPr>'
+            f'<w:t>{xml_escape(t["subtitle"])}</w:t></w:r></w:p>'
         )
 
         # Meta block
-        body_xml.append(xml_para(run_id, bold_prefix="Execution Run ID:"))
-        body_xml.append(xml_para(scenario, bold_prefix="Mission / Scenario:"))
-        body_xml.append(xml_para(f"{ist_str} ({iso_str})", bold_prefix="Generated Timestamp:"))
-        body_xml.append(xml_para(f"{classification} / {role}", bold_prefix="Clearance &amp; Role:"))
-        body_xml.append(xml_para(f"{model_name} [{provider}]", bold_prefix="Sovereign Runtime:"))
-        body_xml.append(xml_para(verdict, bold_prefix="Independent Verdict:", color="059669" if verdict == "VERIFIED" else "D97706"))
+        body_xml.append(xml_para(run_id, bold_prefix=t["meta_run_id"]))
+        body_xml.append(xml_para(scenario, bold_prefix=t["meta_scenario"]))
+        body_xml.append(xml_para(f"{ist_str} ({iso_str})", bold_prefix=t["meta_timestamp"]))
+        body_xml.append(xml_para(f"{classification} / {role}", bold_prefix=t["meta_clearance_role"]))
+        body_xml.append(xml_para(f"{model_name} [{provider}]", bold_prefix=t["meta_model_runtime"]))
+        body_xml.append(xml_para(verdict, bold_prefix=t["meta_verdict"], color="059669" if verdict == "VERIFIED" else "D97706"))
 
         # Section 1
-        body_xml.append(xml_heading("1. Executive Findings &amp; Operational Verdict", level=1))
-        # Split final answer lines
-        for line in final_answer.split("\n"):
-            line_str = line.strip()
-            if line_str:
-                body_xml.append(xml_para(line_str))
+        body_xml.append(xml_heading(t["sec1_heading"], level=1))
+        body_xml.append(xml_para(verdict, bold_prefix=t["sec1_verdict"]))
+        body_xml.append(xml_para(final_answer, bold_prefix=t["sec1_analysis"]))
 
         # Section 2
-        body_xml.append(xml_heading("2. Operational Query &amp; Scope", level=1))
-        body_xml.append(xml_para(query, bold_prefix="Query:"))
+        body_xml.append(xml_heading(t["sec2_heading"], level=1))
+        body_xml.append(xml_para(query, bold_prefix=t["sec2_query"]))
 
         # Section 3: Evidence
-        body_xml.append(xml_heading("3. Evidence Grounding Dossier", level=1))
+        body_xml.append(xml_heading(t["sec3_heading"], level=1))
         evidence_set = data.get("evidence_set") or {}
         k_evd = evidence_set.get("knowledge_evidence") or []
         t_evd = evidence_set.get("tool_evidence") or []
         v_evd = evidence_set.get("visual_evidence") or []
         total_evd = len(k_evd) + len(t_evd) + len(v_evd)
-        body_xml.append(xml_para(f"Retrieved Artifacts: {total_evd} verified evidence items."))
+        body_xml.append(xml_para(f"{total_evd}", bold_prefix=t["sec3_total"]))
 
         for e in k_evd:
             src = e.get("source_reference") or e.get("filename") or "Plant Knowledge Fabric"
@@ -275,7 +363,7 @@ class SovereignReportGenerator:
             body_xml.append(xml_para(obs, bold_prefix=f"• [Optical Observation: {src}]:"))
 
         # Section 4: Calculations
-        body_xml.append(xml_heading("4. Deterministic Verified Calculations", level=1))
+        body_xml.append(xml_heading(t["sec4_heading"], level=1))
         calcs = data.get("calculations") or []
         if not calcs and data.get("verification"):
             calcs = data["verification"].get("calculations") or []
@@ -283,13 +371,13 @@ class SovereignReportGenerator:
         if calcs:
             for idx, c in enumerate(calcs):
                 desc = c.get("description") or c.get("calculation_type") or "Math check"
-                res_str = f"{c.get('result')} {c.get('units', '')} [VERIFIED BY PYTHON DETERMINISTIC KERNEL]"
+                res_str = f"{c.get('result')} {c.get('units', '')} {t['sec4_verified']}"
                 body_xml.append(xml_para(res_str, bold_prefix=f"[{idx+1}] {desc}:"))
         else:
-            body_xml.append(xml_para("No mathematical calculations triggered for this mission type."))
+            body_xml.append(xml_para(t["sec4_no_calcs"]))
 
         # Section 5: Policy
-        body_xml.append(xml_heading("5. Sovereign Policy Gateway &amp; Actuation Boundaries", level=1))
+        body_xml.append(xml_heading(t["sec5_heading"], level=1))
         p_decisions = data.get("policy_decisions") or []
         if not p_decisions and data.get("policy_decision"):
             p_decisions = [data["policy_decision"]]
@@ -301,10 +389,10 @@ class SovereignReportGenerator:
                 reason = d.get("reason") or "Enforced by local policy rules."
                 body_xml.append(xml_para(f"DECISION = {decision}. Reason: {reason}", bold_prefix=f"• Action '{action_name}':"))
         else:
-            body_xml.append(xml_para("Action evaluated under default-deny industrial policy. Zero boundary violations."))
+            body_xml.append(xml_para(t["sec5_default_deny"]))
 
         # Section 6: Verification
-        body_xml.append(xml_heading("6. Independent 7-Check Verification Results", level=1))
+        body_xml.append(xml_heading(t["sec6_heading"], level=1))
         checks = []
         if data.get("verification") and data["verification"].get("checks"):
             checks = data["verification"]["checks"]
@@ -316,15 +404,14 @@ class SovereignReportGenerator:
                 cdesc = chk.get("description", "")
                 body_xml.append(xml_para(f"{cstatus} ― {cdesc}", bold_prefix=f"[{ctype}]:"))
         else:
-            body_xml.append(xml_para("7 / 7 Verification checks executed deterministically in Python kernel."))
+            body_xml.append(xml_para(t["sec6_checks_exec"]))
 
         # Section 7: Audit Reference
-        body_xml.append(xml_heading("7. Enclave Integrity &amp; Local Audit Reference", level=1))
+        body_xml.append(xml_heading(t["sec7_heading"], level=1))
         sig = uuid.uuid4().hex
         body_xml.append(
             xml_para(
-                f"Generated deterministically by on-premise FORGE runtime without cloud transmission. Digital Seal: SHA256:{sig}",
-                bold_prefix="Cryptographic Verification:"
+                t["sec7_text"].format(signature=sig)
             )
         )
 

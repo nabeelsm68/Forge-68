@@ -1,5 +1,14 @@
 """FORGE Sovereign Industrial AI Control Plane - Main Application."""
 
+import sys
+from pathlib import Path
+
+# Ensure local virtual environment site-packages are accessible even if uvicorn
+# was launched from a system or global Python interpreter
+_venv_site_packages = Path(__file__).resolve().parent.parent / ".venv" / "Lib" / "site-packages"
+if _venv_site_packages.is_dir() and str(_venv_site_packages) not in sys.path:
+    sys.path.insert(0, str(_venv_site_packages))
+
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 import uuid
@@ -302,16 +311,38 @@ async def search_knowledge(request: KnowledgeSearchRequest) -> KnowledgeSearchRe
             query=request.query,
             top_k=request.top_k,
             classification_filter=request.classification,
+            max_classification=request.classification,
         )
         evidence = [EvidenceRecord.from_retrieval_result(r) for r in results]
+
+        restricted = knowledge_service.find_restricted_matches(request.query, request.classification)
+        denied_records_count = len(restricted)
+        denied_record_names = [r["title"] for r in restricted]
+
+        synthesized_answer = None
+        cited_sources: List[str] = []
+        if request.synthesize:
+            synthesized_answer, cited_sources = await knowledge_service.synthesize_grounded_answer(
+                query=request.query,
+                results=results,
+                language=request.language or "en",
+                user_classification=request.classification,
+            )
+
         return KnowledgeSearchResponse(
             query=request.query,
             total_results=len(results),
             results=results,
             evidence=evidence,
+            synthesized_answer=synthesized_answer,
+            cited_sources=cited_sources,
+            language=request.language or "en",
+            denied_records_count=denied_records_count,
+            denied_record_names=denied_record_names,
         )
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Search failed: {exc}")
+
 
 
 @app.get("/api/v1/knowledge/documents", tags=["Knowledge"])

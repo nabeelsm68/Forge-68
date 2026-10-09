@@ -221,4 +221,5 @@ class AgentQueryResponse(BaseModel):
     tool_result: Optional[Dict[str, Any]] = None
     evidence: Optional[EvidenceRecord] = None
     timing: Optional[Any] = None
+    latency_ms: Optional[float] = Field(default=None, description="End-to-end execution latency in milliseconds")
 

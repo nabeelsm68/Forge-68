@@ -142,7 +142,7 @@ if ($PreflightOnly) {
 Write-Header "STARTING FORGE CONTROL PLANE PROCESSES"
 
 Write-Host "Starting sovereign FastAPI backend on http://localhost:8000..." -ForegroundColor Green
-$backendProc = Start-Process -FilePath $PythonCmd -ArgumentList "-m uvicorn app.main:app --port 8000" -WorkingDirectory $BackendDir -PassThru
+$backendProc = Start-Process -FilePath $PythonCmd -ArgumentList "-m uvicorn app.main:app --port 8000 --reload" -WorkingDirectory $BackendDir -PassThru
 
 Write-Host "Starting Next.js operational frontend on http://localhost:3000..." -ForegroundColor Green
 $frontendProc = Start-Process -FilePath "npm" -ArgumentList "run dev" -WorkingDirectory $FrontendDir -PassThru

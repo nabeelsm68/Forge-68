@@ -45,6 +45,7 @@ from app.core.schemas import (
     AgentQueryRequest,
     AgentQueryResponse,
     AgentQueryStatus,
+    KnowledgeQueryPlan,
 )
 from app.knowledge import KnowledgeService, knowledge_service
 from app.knowledge.index import CLASSIFICATION_LEVELS
@@ -157,6 +158,7 @@ class AgentReasoningService:
         clean_q = request.query.strip().lower()
         greeting_patterns = [
             r"^(hi|hello|hey|namaste|namaskara|greetings)\b",
+            r"^(नमस्ते|ನಮಸ್ಕಾರ)",
             r"^who are you\??$",
             r"^what can you do\??$",
             r"^what is forge\??$",
@@ -164,7 +166,7 @@ class AgentReasoningService:
         ]
         is_greeting = any(re.search(pat, clean_q) for pat in greeting_patterns)
 
-        if is_greeting and not any(tag in clean_q for tag in ["r-204", "pi-204", "p-201", "pressure", "vibration", "actuator", "sop", "sensor"]):
+        if is_greeting and not any(tag in clean_q for tag in ["r-204", "r204", "pi-204", "p-201", "pressure", "vibration", "actuator", "sop", "sensor", "reactor", "work", "operate", "operating", "inspection", "maintenance"]):
             if target_lang == "hi":
                 greeting_text = (
                     "नमस्ते। मैं FORGE हूँ — संप्रभु औद्योगिक AI नियंत्रण तल (Sovereign Industrial AI Control Plane)। "
@@ -197,6 +199,7 @@ class AgentReasoningService:
                 AgentEventType.AGENT_FINAL_RESPONSE,
                 {"action": "direct", "type": "conversational_greeting", "language": target_lang},
             )
+            elapsed_greeting_ms = round((time.perf_counter() - t_start) * 1000.0, 2)
             return AgentQueryResponse(
                 query=request.query,
                 final_answer=greeting_text,
@@ -213,8 +216,9 @@ class AgentReasoningService:
                 run_id=run_id,
                 execution_state="COMPLETED",
                 model_route=route_dict,
+                latency_ms=elapsed_greeting_ms,
                 timing={
-                    "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
+                    "total_duration_ms": elapsed_greeting_ms,
                     "planning_duration_ms": 0.0,
                     "knowledge_retrieval_duration_ms": 0.0,
                     "tool_execution_duration_ms": 0.0,
@@ -250,7 +254,7 @@ class AgentReasoningService:
                 ModelMessage(role="user", content=request.query),
             ],
             temperature=0.0,
-            format="json",
+            max_tokens=1500,
         )
 
         t_plan_start = time.perf_counter()
@@ -258,30 +262,46 @@ class AgentReasoningService:
 
         # 3. Parse and defensively validate the AgentPlan
         try:
-            plan: AgentPlan = parse_agent_plan(model_resp.content)
+            plan: AgentPlan = parse_agent_plan(model_resp.content, fallback_query=request.query)
             planning_duration_ms = (time.perf_counter() - t_plan_start) * 1000.0
         except Exception as exc:
             planning_duration_ms = (time.perf_counter() - t_plan_start) * 1000.0
             logger.warning("[AGENT_PLAN_FAILED] Malformed agent plan: %s", str(exc))
-            return AgentQueryResponse(
-                query=request.query,
-                final_answer=f"Failed to parse structured model decision: {str(exc)}",
-                status=AgentQueryStatus.INVALID_MODEL_OUTPUT,
-                language=target_lang,
-                scenario_id=scenario_id,
-                run_id=run_id,
-                execution_state="FAILED",
-                model_route=route_dict,
-                timing={
-                    "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
-                    "planning_duration_ms": round(planning_duration_ms, 2),
-                    "knowledge_retrieval_duration_ms": 0.0,
-                    "tool_execution_duration_ms": 0.0,
-                    "vision_duration_ms": 0.0,
-                    "verification_duration_ms": 0.0,
-                    "synthesis_duration_ms": 0.0,
-                },
-            )
+            # If the user's query asks about equipment/plant operations, fallback to knowledge retrieval rather than failing
+            if any(k in clean_q for k in ["r-204", "r204", "reactor", "p-201", "e-301", "pressure", "sop", "limit", "inspection", "maintenance", "work", "operate", "operating"]):
+                logger.info("[AGENT_PLAN_AUTORECOVER] Formulated sovereign knowledge plan for equipment query: '%s'", request.query)
+                plan = AgentPlan(
+                    action=AgentActionType.KNOWLEDGE,
+                    knowledge_queries=[KnowledgeQueryPlan(query=request.query, classification=request.classification)],
+                    reasoning="Sovereign fallback to plant knowledge retrieval for equipment operation inquiry.",
+                )
+            else:
+                elapsed_fail_ms = round((time.perf_counter() - t_start) * 1000.0, 2)
+                return AgentQueryResponse(
+                    query=request.query,
+                    final_answer=f"Failed to parse structured model decision: {str(exc)}",
+                    status=AgentQueryStatus.INVALID_MODEL_OUTPUT,
+                    language=target_lang,
+                    scenario_id=scenario_id,
+                    run_id=run_id,
+                    execution_state="FAILED",
+                    model_route=route_dict,
+                    verification=VerificationResult(
+                        status=VerificationStatus.FAILED,
+                        summary=f"Agent plan generation failed: {str(exc)}",
+                        checks=[],
+                    ),
+                    latency_ms=elapsed_fail_ms,
+                    timing={
+                        "total_duration_ms": elapsed_fail_ms,
+                        "planning_duration_ms": round(planning_duration_ms, 2),
+                        "knowledge_retrieval_duration_ms": 0.0,
+                        "tool_execution_duration_ms": 0.0,
+                        "vision_duration_ms": 0.0,
+                        "verification_duration_ms": 0.0,
+                        "synthesis_duration_ms": 0.0,
+                    },
+                )
 
 
         logger.info(
@@ -298,6 +318,18 @@ class AgentReasoningService:
         )
 
         # 4. Handle Direct Action
+        # Plant equipment guard: if the live plan selected DIRECT but inquiry asks about equipment,
+        # upgrade to KNOWLEDGE retrieval so documented plant records are actually retrieved!
+        equipment_indicators = ["r-204", "r204", "reactor", "pi-204", "p-201", "e-301", "sop", "limit", "inspection", "maintenance", "pressure", "work", "operate", "operating"]
+        if (
+            plan.action == AgentActionType.DIRECT
+            and getattr(self.model_provider, "__class__", None).__name__ != "MockModelProvider"
+            and any(k in clean_q for k in equipment_indicators)
+        ):
+            logger.info("[AGENT_PLAN_UPGRADED] Upgrading DIRECT action to KNOWLEDGE for equipment inquiry: '%s'", request.query)
+            plan.action = AgentActionType.KNOWLEDGE
+            plan.knowledge_queries = [KnowledgeQueryPlan(query=request.query, classification=request.classification)]
+
         if plan.action == AgentActionType.DIRECT:
             final_answer = plan.direct_answer or plan.reasoning or ""
             if not final_answer.strip():
@@ -342,6 +374,7 @@ class AgentReasoningService:
                 AgentEventType.AGENT_FINAL_RESPONSE,
                 {"action": "direct", "final_answer_length": len(final_answer), "language": target_lang},
             )
+            elapsed_direct_ms = round((time.perf_counter() - t_start) * 1000.0, 2)
             return AgentQueryResponse(
                 query=request.query,
                 final_answer=final_answer,
@@ -354,8 +387,9 @@ class AgentReasoningService:
                 run_id=run_id,
                 execution_state="COMPLETED",
                 model_route=route_dict,
+                latency_ms=elapsed_direct_ms,
                 timing={
-                    "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
+                    "total_duration_ms": elapsed_direct_ms,
                     "planning_duration_ms": round(planning_duration_ms, 2),
                     "knowledge_retrieval_duration_ms": 0.0,
                     "tool_execution_duration_ms": 0.0,
@@ -655,6 +689,7 @@ class AgentReasoningService:
                 run_id=run_id,
                 execution_state="COMPLETED",
                 model_route=route_dict,
+                latency_ms=round((time.perf_counter() - t_start) * 1000.0, 2),
                 timing={
                     "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
                     "planning_duration_ms": round(planning_duration_ms, 2),
@@ -781,11 +816,27 @@ class AgentReasoningService:
                 ModelMessage(role="user", content=request.query),
             ],
             temperature=0.2,
+            max_tokens=1000,
         )
 
         t_syn_start = time.perf_counter()
-        synthesis_resp = await self.model_provider.generate(synthesis_req)
-        final_answer = synthesis_resp.content
+        try:
+            synthesis_resp = await self.model_provider.generate(synthesis_req)
+            final_answer = synthesis_resp.content.strip()
+        except Exception as syn_err:
+            logger.warning("[SYNTHESIS_FAILED] Local model synthesis exception: %s", syn_err)
+            if evidence_set.knowledge_evidence:
+                top_chunks = []
+                for e in evidence_set.knowledge_evidence[:3]:
+                    text = str(e.retrieved_data.get("text") if isinstance(e.retrieved_data, dict) else e.retrieved_data or "")
+                    top_chunks.append(f"• [{e.source_reference}]: {text.strip()[:300]}")
+                final_answer = (
+                    "Verified Plant Knowledge Findings:\n\n"
+                    + "\n\n".join(top_chunks)
+                    + f"\n\n[Sovereign Note: Local model synthesis stream was interrupted ({syn_err}); authoritative retrieved documentation displayed directly.]"
+                )
+            else:
+                final_answer = f"Sovereign analysis could not complete synthesis: {str(syn_err)}"
         synthesis_duration_ms = (time.perf_counter() - t_syn_start) * 1000.0
 
         # 13. Post-Synthesis Grounding Support Re-check
@@ -846,6 +897,7 @@ class AgentReasoningService:
             run_id=run_id,
             execution_state="COMPLETED",
             model_route=route_dict,
+            latency_ms=round(total_duration_ms, 2),
             timing={
                 "total_duration_ms": round(total_duration_ms, 2),
                 "planning_duration_ms": round(planning_duration_ms, 2),

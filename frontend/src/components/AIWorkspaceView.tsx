@@ -84,6 +84,18 @@ export function AIWorkspaceView({
     setQuery(externalQuery);
   }
 
+  // Clear stale response when role or clearance changes
+  const prevRoleRef = useRef(role);
+  const prevClearanceRef = useRef(clearance);
+  useEffect(() => {
+    if (prevRoleRef.current !== role || prevClearanceRef.current !== clearance) {
+      prevRoleRef.current = role;
+      prevClearanceRef.current = clearance;
+      setResponse(null);
+      setError(null);
+    }
+  }, [role, clearance]);
+
 
 
   const demoScenarios = [
@@ -368,9 +380,15 @@ export function AIWorkspaceView({
     : "custom_mission";
 
   // Conversational response check (greetings, general capabilities)
+  // Must NOT treat invalid model output, policy denial, or errors as a successful conversational answer
   const isGreetingResponse = Boolean(
     !isDemoScenarioResponse &&
     response &&
+    (response.status as string) !== "INVALID_MODEL_OUTPUT" &&
+    response.status !== "POLICY_DENIED" &&
+    (response.status as string) !== "ERROR" &&
+    response.status !== "TOOL_ERROR" &&
+    response.verification?.status !== "FAILED" &&
     (response.status === "DIRECT_ANSWER" ||
       (response.verification?.checks?.length === 0 &&
        totalEvidenceCount === 0 &&
@@ -384,6 +402,8 @@ export function AIWorkspaceView({
   // Determine current verdict
   const currentVerdict = isPolicyDenied
     ? "ACTION_BLOCKED"
+    : (response?.status as string) === "INVALID_MODEL_OUTPUT" || (response?.status as string) === "ERROR" || response?.status === "TOOL_ERROR"
+    ? "FAILED"
     : (executedScenario === "prompt_injection" || response?.final_answer?.toLowerCase().includes("quarantin"))
     ? "QUARANTINED"
     : response?.verification?.status === "NEEDS_REVIEW"
@@ -944,7 +964,7 @@ export function AIWorkspaceView({
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)", textTransform: "uppercase" }}>
                     Status
                   </span>
-                  <VerdictBadge verdict="VERIFIED" />
+                  <VerdictBadge verdict={response?.verification?.status === "VERIFIED" ? "VERIFIED" : response?.status === "DIRECT_ANSWER" ? "VERIFIED" : "REVIEW_REQUIRED"} />
                 </div>
               </div>
 
@@ -977,7 +997,7 @@ export function AIWorkspaceView({
                 <div>
                   <span style={{ color: "var(--ink-3)", display: "block" }}>LATENCY</span>
                   <strong style={{ color: "var(--ink)", fontSize: "20px" }}>
-                    {response?.latency_ms ? response.latency_ms.toFixed(0) : "0"} ms
+                    {(response?.latency_ms ?? (response as any)?.timing?.total_duration_ms) ? (response?.latency_ms ?? (response as any)?.timing?.total_duration_ms).toFixed(0) : "N/A"} ms
                   </strong>
                   <span style={{ color: "var(--ink-3)", display: "block", fontSize: "11px", marginTop: 2 }}>Local on-premise execution</span>
                 </div>
@@ -1810,7 +1830,7 @@ export function AIWorkspaceView({
                 <div>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>LATENCY</span>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: "24px", color: "var(--ink)", fontWeight: 600, marginTop: 4 }}>
-                    {response?.latency_ms ? `${response.latency_ms.toFixed(0)}` : "0"} <span style={{ fontSize: "14px", fontWeight: 400 }}>ms</span>
+                    {(response?.latency_ms ?? (response as any)?.timing?.total_duration_ms) ? `${(response?.latency_ms ?? (response as any)?.timing?.total_duration_ms).toFixed(0)}` : "N/A"} <span style={{ fontSize: "14px", fontWeight: 400 }}>ms</span>
                   </div>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>Local sovereign runtime</span>
                 </div>
@@ -1926,7 +1946,7 @@ export function AIWorkspaceView({
                   <div style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: "var(--ink-2)", display: "flex", flexDirection: "column", gap: 4 }}>
                     <div>Model: <strong style={{ color: "var(--ink)" }}>{response.model_name || "Sovereign Industrial LLM"}</strong></div>
                     <div>Provider: <strong style={{ color: "var(--ink)" }}>{response.provider || "Local Runtime"}</strong></div>
-                    <div>Latency: <strong style={{ color: "var(--ink)" }}>{response.latency_ms ? response.latency_ms.toFixed(1) : "0"} ms</strong></div>
+                    <div>Latency: <strong style={{ color: "var(--ink)" }}>{(response?.latency_ms ?? (response as any)?.timing?.total_duration_ms) ? `${(response?.latency_ms ?? (response as any)?.timing?.total_duration_ms).toFixed(1)} ms` : "N/A"}</strong></div>
                     {response.tokens && (
                       <div>Tokens: {response.tokens.prompt_tokens} in / {response.tokens.completion_tokens} out</div>
                     )}

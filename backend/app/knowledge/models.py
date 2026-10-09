@@ -47,6 +47,10 @@ class DocumentChunk(BaseModel):
         description="Preserved document metadata (document_id, filename, title, document_type, equipment_ids, classification, chunk_index)"
     )
 
+    @property
+    def classification(self) -> Any:
+        return self.metadata.get("classification", "INTERNAL")
+
 
 class RetrievalResult(BaseModel):
     """Ranked document chunk retrieval item."""

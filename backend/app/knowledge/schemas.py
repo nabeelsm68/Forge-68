@@ -60,6 +60,9 @@ class KnowledgeSearchRequest(BaseModel):
         default=None,
         description="Optional data classification filter"
     )
+    language: Optional[str] = Field(default="en", description="Target response language (en, hi, kn)")
+    synthesize: bool = Field(default=True, description="Whether to synthesize a grounded answer using sovereign model")
+
 
 
 class KnowledgeSearchResponse(BaseModel):
@@ -68,3 +71,9 @@ class KnowledgeSearchResponse(BaseModel):
     total_results: int
     results: List[RetrievalResult]
     evidence: List[EvidenceRecord]
+    synthesized_answer: Optional[str] = None
+    cited_sources: List[str] = Field(default_factory=list)
+    language: Optional[str] = "en"
+    denied_records_count: int = Field(default=0, description="Count of relevant records restricted by clearance")
+    denied_record_names: List[str] = Field(default_factory=list, description="Titles of matching records requiring higher clearance")
+

@@ -60,6 +60,12 @@ data/storage/
 *.sqlite3
 *.db
 backend/app/artifacts/store/
+backend/data/models/
+data/models/
+*.onnx
+*.bin
+*.safetensors
+*.pt
 
 # Local Knowledge Indexes & Embeddings Cache
 backend/data/knowledge_index/

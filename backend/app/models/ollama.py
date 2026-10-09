@@ -75,6 +75,10 @@ class OllamaModelProvider(BaseModelProvider):
 
                 message_data = data.get("message", {})
                 content = message_data.get("content", "")
+                if not content or not content.strip():
+                    thinking = message_data.get("thinking", "")
+                    if thinking:
+                        content = thinking
 
                 usage = ModelUsage(
                     prompt_tokens=data.get("prompt_eval_count", 0),

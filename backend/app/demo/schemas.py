@@ -2,7 +2,7 @@
 
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.core.schemas import AgentQueryResponse, AgentQueryStatus
 from app.security.models import DataClassification, Role
@@ -34,13 +34,24 @@ class DemoScenarioMetadata(BaseModel):
 
 class DemoRunRequest(BaseModel):
     """Payload to execute an end-to-end industrial demo mission."""
-    scenario: DemoScenarioId = Field(..., description="Scenario identifier to execute")
+    scenario: Optional[DemoScenarioId] = Field(default=None, description="Scenario identifier to execute")
     scenario_id: Optional[DemoScenarioId] = Field(default=None, description="Explicit scenario identifier alias")
     run_id: Optional[str] = Field(default=None, description="Unique execution run identifier")
     role: Optional[Role] = Field(default=None, description="Optional override role")
     classification: Optional[DataClassification] = Field(default=None, description="Optional override clearance")
+    clearance: Optional[DataClassification] = Field(default=None, description="Optional alias for classification")
     deterministic: bool = Field(default=True, description="Enforce deterministic sovereign execution mode")
     language: Optional[str] = Field(default="en", description="Target interaction language: 'en', 'hi', or 'kn'")
+
+    @model_validator(mode="after")
+    def validate_fields(self) -> "DemoRunRequest":
+        if not self.scenario and self.scenario_id:
+            self.scenario = self.scenario_id
+        if not self.scenario:
+            raise ValueError("Field 'scenario' or 'scenario_id' is required.")
+        if not self.classification and self.clearance:
+            self.classification = self.clearance
+        return self
 
 
 
