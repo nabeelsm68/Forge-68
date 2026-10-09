@@ -15,6 +15,7 @@ export interface AppShellProps {
   onChangeClearance: (c: DataClassification) => void;
   runtime: ComputedRuntimeState;
   onRefreshRuntime?: () => void;
+  onOpenVoice?: () => void;
   children: React.ReactNode;
 }
 
@@ -27,6 +28,7 @@ export function AppShell({
   onChangeClearance,
   runtime,
   onRefreshRuntime,
+  onOpenVoice,
   children,
 }: AppShellProps) {
   return (
@@ -49,6 +51,7 @@ export function AppShell({
         clearance={clearance}
         onChangeClearance={onChangeClearance}
         runtime={runtime}
+        onOpenVoice={onOpenVoice}
       />
 
       {/* 2. Main Work Area (1360px max width, centered) */}

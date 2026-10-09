@@ -231,3 +231,76 @@ def test_sovereignty_center_metrics(client):
     assert caps["outside_ai_services_configured"] == 0
     assert caps["inference_endpoint_is_loopback"] is True
     assert caps["dependency_scan"]["cloud_sdks_found"] == 0
+
+
+# =========================================================================
+# Voice API & Sovereign Voice Stack
+# =========================================================================
+
+def test_voice_status_endpoint(client):
+    """Verify voice status endpoint truthfully reports local engines and sovereign guarantee."""
+    res = client.get("/api/v1/voice/status")
+    assert res.status_code == 200
+    data = res.json()
+    assert "stt_available" in data
+    assert "tts_available" in data
+    assert "supported_languages" in data
+    assert set(["en", "hi", "kn"]).issubset(set(data["supported_languages"]))
+    assert "sovereign_guarantee" in data
+    assert "on-premise" in data["sovereign_guarantee"].lower() or "sovereign" in data["sovereign_guarantee"].lower()
+    assert "setup_instructions" in data
+
+
+def test_voice_transcribe_payload_limit(client):
+    """Verify upload larger than 25MB is rejected with 413."""
+    huge_data = b"x" * (26 * 1024 * 1024)
+    files = {"file": ("test.webm", io.BytesIO(huge_data), "audio/webm")}
+    res = client.post("/api/v1/voice/transcribe", files=files, data={"language": "en"})
+    assert res.status_code == 413
+
+
+def test_voice_transcribe_graceful_local_response(client):
+    """Verify voice transcription handles missing local model gracefully without cloud fallback."""
+    tiny_audio = b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x44\xac\x00\x00\x88\x58\x01\x00\x02\x00\x10\x00data\x00\x00\x00\x00"
+    files = {"file": ("test.wav", io.BytesIO(tiny_audio), "audio/wav")}
+    res = client.post("/api/v1/voice/transcribe", files=files, data={"language": "en"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] in ("SUCCESS", "EMPTY_AUDIO", "ENGINE_UNAVAILABLE")
+    assert "cloud" not in (data.get("engine") or "").lower()
+
+
+def test_voice_synthesize_graceful_local_response(client):
+    """Verify voice synthesis handles text without external cloud API calls."""
+    payload = {"text": "Reactor R-204 operating baseline normal.", "language": "en"}
+    res = client.post("/api/v1/voice/synthesize", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] in ("SUCCESS", "ENGINE_UNAVAILABLE")
+    if data["status"] == "SUCCESS":
+        assert len(data["audio_base64"]) > 0
+    else:
+        assert "not installed" in data.get("error_message", "").lower() or "engine" in data.get("error_message", "").lower()
+
+
+# =========================================================================
+# Conversational Isolation & Demo Run Isolation
+# =========================================================================
+
+@pytest.mark.asyncio
+async def test_conversational_greeting_isolation(client):
+    """Verify that a greeting returns a clean conversational response with no physical calculations."""
+    res = client.post(
+        "/api/v1/agent/query",
+        json={"query": "Hello", "role": "ENGINEER", "classification": "INTERNAL", "language": "en"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "DIRECT_ANSWER"
+    # Verification calculations should be empty for a greeting
+    verification = data.get("verification")
+    if verification:
+        calcs = verification.get("calculation_results") or verification.get("calculations") or []
+        assert len(calcs) == 0
+    # Final answer should be conversational
+    assert "FORGE" in data["final_answer"]

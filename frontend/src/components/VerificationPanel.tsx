@@ -24,7 +24,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
       title: "Evidence Provenance & Integrity",
       status: "VERIFIED" as VerificationStatus,
       description: "All ingested document chunks, tool telemetry, and visual observations possess verifiable source references and SHA-256 digests.",
-      details: "4/4 evidence records verified to source digests. No orphaned claims detected.",
+      details: "Evidence records verified to source digests. No orphaned claims detected.",
     },
     {
       check_name: "COMPLETENESS",
@@ -32,7 +32,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
       title: "Requirement & Evidence Completeness",
       status: "VERIFIED" as VerificationStatus,
       description: "Every reasoning claim in the agent's plan has corresponding backing records across knowledge, tooling, and sensor telemetry.",
-      details: "Full coverage across SOP limits, ultrasonic PAUT thickness, and analog gauge reading.",
+      details: "Evidence coverage confirmed across ingested references and tool records.",
     },
     {
       check_name: "POLICY",
@@ -40,7 +40,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
       title: "Policy Gateway Compliance",
       status: "VERIFIED" as VerificationStatus,
       description: "All requested operations evaluated against role clearance. Zero execution of unauthorized, critical-risk, or write-actuation tool handlers.",
-      details: "Gateway default-deny confirmed. Calibration overrides strictly blocked.",
+      details: "Gateway default-deny confirmed. Critical mutations blocked.",
     },
     {
       check_name: "CLASSIFICATION",
@@ -56,15 +56,15 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
       title: "Cross-Source Parameter Consistency",
       status: "VERIFIED" as VerificationStatus,
       description: "Operating readings and engineering baselines are compared across multiple sources. Variances are flagged for review.",
-      details: "+1.8 bar delta between PI-204 (33.0 bar) and SOP §3.2 (31.2 bar). Non-conflicting semantic roles.",
+      details: "Cross-source parameter consistency verified against available reference baselines.",
     },
     {
       check_name: "CALCULATION",
       plainTitle: "Math independently checked",
       title: "Deterministic Math Validation",
       status: "VERIFIED" as VerificationStatus,
-      description: "All numerical variances and pressure alarm margins are calculated by pure Python code, not by the language model.",
-      details: "Variance: 33.0 - 31.2 = +1.8 bar. Alarm margin: 33.5 - 33.0 = 0.5 bar. Math exact.",
+      description: "All numerical variances and engineering calculations are calculated by pure Python code, not by the language model.",
+      details: "Deterministic math verified via Python engine.",
     },
     {
       check_name: "GROUNDING",
@@ -72,7 +72,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
       title: "Synthesis Grounding & Hallucination Gate",
       status: "VERIFIED" as VerificationStatus,
       description: "Response text is checked for factual grounding against verified evidence. Speculative assertions are purged.",
-      details: "100% of asserted quantities match verified evidence records.",
+      details: "Asserted quantities verified against backing evidence records.",
     },
   ];
 
@@ -85,7 +85,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
             No Verification Results For Current Session
           </h2>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: "14px", color: "var(--ink-2)", maxWidth: "54ch", margin: "0 auto" }}>
-            Execute an industrial scenario in the AI Workspace to evaluate the 7 independent deterministic checks against real evidence records.
+            Execute an industrial scenario in the AI Workspace to evaluate the independent deterministic checks against real evidence records.
           </p>
         </div>
       </EnamelSurface>
@@ -96,8 +96,10 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     ? verification.checks.map((chk) => {
         const matchingBaseline = baselineChecks.find((b) => b.check_name === chk.check_type);
         const detailsStr = chk.details && Object.keys(chk.details).length > 0
-          ? JSON.stringify(chk.details)
-          : matchingBaseline?.details || `Evidence items: ${chk.evidence_ids?.length || 0}`;
+          ? (typeof chk.details === "string" ? chk.details : JSON.stringify(chk.details))
+          : (chk.evidence_ids && chk.evidence_ids.length > 0
+              ? `Evaluated against ${chk.evidence_ids.length} evidence records.`
+              : matchingBaseline?.details || "Deterministic verification check evaluated.");
 
         return {
           check_name: chk.check_type,

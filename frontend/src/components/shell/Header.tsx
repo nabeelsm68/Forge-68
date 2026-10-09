@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { DataClassification, Role } from "@/lib/api";
 import { ComputedRuntimeState } from "@/lib/runtime";
 import { ROLE_PERMISSIONS } from "@/lib/permissions";
+import { useTranslation } from "@/lib/i18n";
 
 export type ShellDestination = "missions" | "library" | "governance" | "audit" | "boundary";
 
@@ -15,15 +16,8 @@ export interface HeaderProps {
   clearance: DataClassification;
   onChangeClearance: (c: DataClassification) => void;
   runtime: ComputedRuntimeState;
+  onOpenVoice?: () => void;
 }
-
-const NAV_ITEMS: Array<{ id: ShellDestination; label: string }> = [
-  { id: "missions", label: "Missions" },
-  { id: "library", label: "Plant Knowledge" },
-  { id: "governance", label: "Who Can Do What" },
-  { id: "audit", label: "Audit" },
-  { id: "boundary", label: "Boundary" },
-];
 
 export function Header({
   activeDestination,
@@ -33,13 +27,23 @@ export function Header({
   clearance,
   onChangeClearance,
   runtime,
+  onOpenVoice,
 }: HeaderProps) {
+  const { language, setLanguage, t } = useTranslation();
   const [personaOpen, setPersonaOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
   const navContainerRef = useRef<HTMLDivElement>(null);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const navItems: Array<{ id: ShellDestination; label: string }> = [
+    { id: "missions", label: t("navMissions") },
+    { id: "library", label: t("navKnowledge") },
+    { id: "governance", label: t("navGovernance") },
+    { id: "audit", label: t("navAudit") },
+    { id: "boundary", label: t("navBoundary") },
+  ];
 
   // Underline slide position
   const [underlineStyle, setUnderlineStyle] = useState<{ left: number; width: number }>({
@@ -55,7 +59,7 @@ export function Header({
     if (def) {
       onChangeClearance(def.defaultClearance);
     }
-    setToastMessage(`Access context updated: Operating as ${newRole} (${def?.defaultClearance || clearance})`);
+    setToastMessage(`${t("navContextUpdated")} ${newRole} (${def?.defaultClearance || clearance})`);
     setTimeout(() => {
       setToastMessage(null);
     }, 4500);
@@ -73,7 +77,7 @@ export function Header({
         width: btnRect.width,
       });
     }
-  }, [activeDestination]);
+  }, [activeDestination, language]);
 
   // Close popover on outside click
   useEffect(() => {
@@ -147,7 +151,7 @@ export function Header({
           }}
           className="desktop-nav"
         >
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isActive = activeDestination === item.id;
             return (
               <button
@@ -190,8 +194,8 @@ export function Header({
         </nav>
       </div>
 
-      {/* Right Controls: Boundary Chip & Persona */}
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      {/* Right Controls: Boundary Chip, Language Selector, Voice, & Persona */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {/* Boundary Chip */}
         <button
           onClick={() => onSelectDestination("boundary")}
@@ -220,7 +224,69 @@ export function Header({
               boxShadow: isOnline ? "0 0 6px var(--sage)" : "0 0 6px var(--coral)",
             }}
           />
-          <span>{isOnline ? "Local only" : "Offline"}</span>
+          <span>{isOnline ? t("navLocalOnly") : t("navOffline")}</span>
+        </button>
+
+        {/* Global Language Selector (EN / HI / KN) */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            background: "var(--bg-1)",
+            border: "1px solid var(--line)",
+            borderRadius: "var(--radius-pill)",
+            padding: "2px 5px",
+          }}
+          title="Switch application language (English / Hindi / Kannada)"
+        >
+          {(["en", "hi", "kn"] as const).map((lng) => {
+            const isSelected = language === lng;
+            return (
+              <button
+                key={lng}
+                type="button"
+                onClick={() => setLanguage(lng)}
+                style={{
+                  background: isSelected ? "var(--brass)" : "transparent",
+                  color: isSelected ? "#000" : "var(--ink-2)",
+                  border: "none",
+                  borderRadius: "var(--radius-pill)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "11px",
+                  fontWeight: isSelected ? 700 : 500,
+                  padding: "3px 8px",
+                  cursor: "pointer",
+                  transition: "all var(--dur-fast) var(--ease-out)",
+                }}
+              >
+                {lng.toUpperCase()}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Persistent Voice Assistant Trigger */}
+        <button
+          onClick={onOpenVoice}
+          title="Open sovereign local voice assistant"
+          style={{
+            background: "var(--bg-1)",
+            border: "1px solid var(--line)",
+            borderRadius: "var(--radius-pill)",
+            padding: "5px 12px",
+            fontFamily: "var(--font-ui)",
+            fontSize: "12px",
+            color: "var(--ink)",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            cursor: "pointer",
+            transition: "border-color var(--dur-fast) var(--ease-out)",
+          }}
+        >
+          <span>🎙</span>
+          <span>{t("navVoiceButton")}</span>
         </button>
 
         {/* Demo Persona Selector */}
@@ -241,7 +307,7 @@ export function Header({
               cursor: "pointer",
             }}
           >
-            <span style={{ color: "var(--ink-3)" }}>Persona:</span>
+            <span style={{ color: "var(--ink-3)" }}>{t("navPersona")}:</span>
             <span style={{ fontWeight: 500 }}>{role}</span>
             <span style={{ color: "var(--line-strong)" }}>·</span>
             <span style={{ color: "var(--brass)" }}>{clearance}</span>
@@ -272,14 +338,14 @@ export function Header({
               <div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{ fontFamily: "var(--font-display)", fontSize: "18px", fontWeight: 500, color: "var(--ink)" }}>
-                    Select User Persona
+                    {t("navPersonaSelectTitle")}
                   </span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--sage)" }}>
-                    RBAC ENFORCED
+                    {t("navRbacBadge")}
                   </span>
                 </div>
                 <div style={{ fontFamily: "var(--font-ui)", fontSize: "12px", color: "var(--ink-2)", marginTop: 4 }}>
-                  Switching personas dynamically updates your plant permissions, tool boundaries, and investigation authority.
+                  {t("navRbacExplanation")}
                 </div>
               </div>
 

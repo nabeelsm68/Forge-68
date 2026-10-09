@@ -781,4 +781,69 @@ export async function fetchModelRoutes(): Promise<ModelRouteInfo[]> {
   return apiFetch<ModelRouteInfo[]>("/api/v1/models/routes");
 }
 
+export interface VoiceEngineStatus {
+  stt_available: boolean;
+  tts_available: boolean;
+  stt_engine: string;
+  tts_engine: string;
+  supported_languages: string[];
+  installed_models: Record<string, string>;
+  sovereign_guarantee: string;
+  setup_instructions: Record<string, string>;
+}
+
+export interface VoiceTranscribeResponse {
+  status: "SUCCESS" | "ENGINE_UNAVAILABLE" | "ERROR";
+  text: string;
+  language: string;
+  confidence: number;
+  engine: string;
+  error_message?: string;
+  sovereign_verified: boolean;
+}
+
+export interface VoiceSynthesizeResponse {
+  status: "SUCCESS" | "ENGINE_UNAVAILABLE" | "ERROR";
+  audio_format: string;
+  audio_base64?: string;
+  engine: string;
+  language: string;
+  error_message?: string;
+}
+
+export async function fetchVoiceStatus(): Promise<VoiceEngineStatus> {
+  return apiFetch<VoiceEngineStatus>("/api/v1/voice/status");
+}
+
+export async function transcribeVoiceAudio(
+  audioBlob: Blob,
+  language: "en" | "hi" | "kn" = "en"
+): Promise<VoiceTranscribeResponse> {
+  const url = `${BACKEND_URL}/api/v1/voice/transcribe`;
+  const formData = new FormData();
+  formData.append("file", audioBlob, "speech_recording.webm");
+  formData.append("language", language);
+
+  const res = await fetch(url, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || `Audio transcription failed with HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function synthesizeVoiceSpeech(
+  text: string,
+  language: "en" | "hi" | "kn" = "en"
+): Promise<VoiceSynthesizeResponse> {
+  return apiFetch<VoiceSynthesizeResponse>("/api/v1/voice/synthesize", {
+    method: "POST",
+    body: JSON.stringify({ text, language }),
+  });
+}
+
+
 

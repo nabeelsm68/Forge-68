@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   AgentQueryRequest,
   AgentQueryResponse,
@@ -27,6 +27,7 @@ import {
   Divider,
 } from "@/components/primitives";
 import { ROLE_PERMISSIONS } from "@/lib/permissions";
+import { useTranslation } from "@/lib/i18n";
 
 interface AIWorkspaceViewProps {
   role: Role;
@@ -34,6 +35,9 @@ interface AIWorkspaceViewProps {
   onExecutionComplete?: (resp: AgentQueryResponse) => void;
   onReset?: () => void;
   lastResponse: AgentQueryResponse | null;
+  externalQuery?: string | null;
+  autoExecuteQuery?: boolean;
+  onExternalQueryHandled?: () => void;
 }
 
 export function AIWorkspaceView({
@@ -42,7 +46,13 @@ export function AIWorkspaceView({
   onExecutionComplete,
   onReset,
   lastResponse,
+  externalQuery,
+  autoExecuteQuery,
+  onExternalQueryHandled,
 }: AIWorkspaceViewProps) {
+  const { language, setLanguage, t } = useTranslation();
+  const activeRequestIdRef = useRef<number>(0);
+
   const [query, setQuery] = useState(
     "Analyze Reactor R-204 and determine whether the current operating condition requires engineering review."
   );
@@ -50,15 +60,30 @@ export function AIWorkspaceView({
   const [customBase64, setCustomBase64] = useState<string | null>(null);
   const [customFilename, setCustomFilename] = useState<string>("uploaded_image.png");
   const [isLoading, setIsLoading] = useState(false);
-  const [activeScenarioId, setActiveScenarioId] = useState<DemoScenarioId | null>("r204_investigation");
+  const [activeScenarioId, setActiveScenarioId] = useState<DemoScenarioId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<AgentQueryResponse | DemoRunResponse | null>(lastResponse);
   const [visionDirectResult, setVisionDirectResult] = useState<VisionAnalyzeResponse | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<"FINDINGS" | "TRACE" | "EVIDENCE" | "CHECKS" | "VISION">("FINDINGS");
   const [isResetting, setIsResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState<"en" | "hi" | "kn">("en");
   const [isExportingReport, setIsExportingReport] = useState<boolean>(false);
+
+  // Sync response when lastResponse prop changes
+  const [prevLastResponse, setPrevLastResponse] = useState<AgentQueryResponse | null>(lastResponse);
+  if (lastResponse !== prevLastResponse) {
+    setPrevLastResponse(lastResponse);
+    setResponse(lastResponse);
+  }
+
+  // Sync query when externalQuery prop changes
+  const [prevExternalQuery, setPrevExternalQuery] = useState<string | null | undefined>(externalQuery);
+  if (externalQuery && externalQuery !== prevExternalQuery) {
+    setPrevExternalQuery(externalQuery);
+    setQuery(externalQuery);
+  }
+
+
 
   const demoScenarios = [
     {
@@ -111,11 +136,11 @@ export function AIWorkspaceView({
       const activeRunId = (response as DemoRunResponse)?.run_id || response?.execution_event_id || `run-local-${Date.now()}`;
       const payload = {
         run_id: activeRunId,
-        scenario_id: (response as DemoRunResponse)?.scenario_id || activeScenarioId || "custom_mission",
+        scenario_id: isDemoScenarioResponse ? (response as DemoRunResponse)?.scenario_id : "custom_mission",
         query: response?.query || query,
         final_answer: response?.final_answer || "",
         status: response?.status,
-        language: response?.language || selectedLanguage,
+        language: response?.language || language,
         execution_state: (response as DemoRunResponse)?.execution_state || "COMPLETED",
         timing: response?.timing,
         policy_decisions: response?.policy_decisions || (response?.policy_decision ? [response.policy_decision] : []),
@@ -141,6 +166,7 @@ export function AIWorkspaceView({
   };
 
   const handleResetDemo = async () => {
+    activeRequestIdRef.current++;
     setIsResetting(true);
     setError(null);
     try {
@@ -185,11 +211,13 @@ export function AIWorkspaceView({
   };
 
   const handleRunScenario = async (scenarioId: DemoScenarioId) => {
+    const reqId = ++activeRequestIdRef.current;
     setIsLoading(true);
     setError(null);
     setResponse(null);
     setVisionDirectResult(null);
     setActiveScenarioId(scenarioId);
+    if (onReset) onReset();
 
     const scenarioDef = demoScenarios.find((s) => s.id === scenarioId);
     if (scenarioDef) {
@@ -204,33 +232,41 @@ export function AIWorkspaceView({
         role,
         classification: clearance,
         deterministic: true,
-        language: selectedLanguage,
+        language,
       });
+      if (reqId !== activeRequestIdRef.current) return;
       setResponse(res);
       setActiveSubTab("FINDINGS");
       if (onExecutionComplete) {
         onExecutionComplete(res);
       }
     } catch (err: unknown) {
+      if (reqId !== activeRequestIdRef.current) return;
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsLoading(false);
+      if (reqId === activeRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleRunQuery = async () => {
-    if (!query.trim()) return;
+  const handleRunQuery = async (overrideQuery?: string) => {
+    const effectiveQuery = (typeof overrideQuery === "string" ? overrideQuery : query).trim();
+    if (!effectiveQuery) return;
+    const reqId = ++activeRequestIdRef.current;
     setIsLoading(true);
     setError(null);
     setResponse(null);
     setVisionDirectResult(null);
+    setActiveScenarioId(null);
+    if (onReset) onReset();
 
     const payload: AgentQueryRequest = {
-      query: query.trim(),
+      query: effectiveQuery,
       role,
       classification: clearance,
       requester: `${role.toLowerCase()}_operator`,
-      language: selectedLanguage,
+      language,
     };
 
     if (selectedImage === "custom" && customBase64) {
@@ -241,21 +277,42 @@ export function AIWorkspaceView({
 
     try {
       const res = await queryAgent(payload);
+      if (reqId !== activeRequestIdRef.current) return;
       setResponse(res);
       setActiveSubTab("FINDINGS");
       if (onExecutionComplete) {
         onExecutionComplete(res);
       }
     } catch (err: unknown) {
+      if (reqId !== activeRequestIdRef.current) return;
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsLoading(false);
+      if (reqId === activeRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
+  // Handle external query auto-execution (e.g. from Voice Assistant)
+  useEffect(() => {
+    if (externalQuery && autoExecuteQuery) {
+      const timer = setTimeout(() => {
+        handleRunQuery(externalQuery);
+        onExternalQueryHandled?.();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalQuery, autoExecuteQuery]);
+
   const handleDirectVisionAnalyze = async () => {
+    const reqId = ++activeRequestIdRef.current;
     setIsLoading(true);
     setError(null);
+    setResponse(null);
+    setActiveScenarioId(null);
+    if (onReset) onReset();
+
     try {
       let res: VisionAnalyzeResponse;
       if (selectedImage === "custom" && customBase64) {
@@ -277,12 +334,16 @@ export function AIWorkspaceView({
           role,
         });
       }
+      if (reqId !== activeRequestIdRef.current) return;
       setVisionDirectResult(res);
       setActiveSubTab("VISION");
     } catch (err: unknown) {
+      if (reqId !== activeRequestIdRef.current) return;
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsLoading(false);
+      if (reqId === activeRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -291,8 +352,31 @@ export function AIWorkspaceView({
     (response?.evidence_set?.tool_evidence?.length || 0) +
     (response?.evidence_set?.visual_evidence?.length || 0);
 
+  // Strictly verify whether current active response is one of the 4 demo scenarios
+  const isDemoScenarioResponse = Boolean(
+    response &&
+    "scenario_id" in response &&
+    (response as DemoRunResponse).scenario_id &&
+    ["r204_investigation", "r204_pressure_variance", "policy_denial", "prompt_injection"].includes(
+      (response as DemoRunResponse).scenario_id
+    )
+  );
+
+  const executedScenario = isDemoScenarioResponse
+    ? (response as DemoRunResponse).scenario_id
+    : "custom_mission";
+
+  // Conversational response check (greetings, general capabilities)
+  const isGreetingResponse = Boolean(
+    !isDemoScenarioResponse &&
+    response &&
+    (response.status === "DIRECT_ANSWER" ||
+      (response.verification?.checks?.length === 0 &&
+       totalEvidenceCount === 0 &&
+       (!response.calculations || response.calculations.length === 0)))
+  );
+
   const isPolicyDenied = response?.status === "POLICY_DENIED";
-  const executedScenario = (response as DemoRunResponse)?.scenario_id || (response as DemoRunResponse)?.scenario || activeScenarioId;
   const runId = (response as DemoRunResponse)?.run_id || response?.execution_event_id || "local-run";
   const executionState = (response as DemoRunResponse)?.execution_state || "COMPLETED";
 
@@ -308,6 +392,7 @@ export function AIWorkspaceView({
     : response?.verification?.status === "FAILED"
     ? "FAILED"
     : "REVIEW_REQUIRED";
+
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -601,15 +686,15 @@ export function AIWorkspaceView({
                 <button
                   key={lng}
                   type="button"
-                  onClick={() => setSelectedLanguage(lng)}
+                  onClick={() => setLanguage(lng)}
                   style={{
-                    background: selectedLanguage === lng ? "var(--brass)" : "transparent",
-                    color: selectedLanguage === lng ? "#000" : "var(--ink-2)",
+                    background: language === lng ? "var(--brass)" : "transparent",
+                    color: language === lng ? "#000" : "var(--ink-2)",
                     border: "none",
                     borderRadius: "2px",
                     fontFamily: "var(--font-mono)",
                     fontSize: "11px",
-                    fontWeight: selectedLanguage === lng ? 600 : 400,
+                    fontWeight: language === lng ? 600 : 400,
                     padding: "2px 6px",
                     cursor: "pointer",
                   }}
@@ -621,7 +706,7 @@ export function AIWorkspaceView({
           </div>
 
           <button
-            onClick={handleRunQuery}
+            onClick={() => handleRunQuery()}
             disabled={isLoading || !query.trim()}
             className="btn-brass-primary"
             style={{ minWidth: 180, justifyContent: "center" }}
@@ -663,6 +748,100 @@ export function AIWorkspaceView({
             </p>
           </div>
         </EnamelSurface>
+      ) : !response && visionDirectResult ? (
+        <EnamelSurface variant="base" padding="spacious">
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", letterSpacing: "0.08em" }}>
+                  {t("visionDirectTitle").toUpperCase()}
+                </span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "10.5px",
+                    color: "var(--sage)",
+                    border: "1px solid var(--sage)",
+                    padding: "1px 6px",
+                    borderRadius: "var(--radius-pill)",
+                  }}
+                >
+                  {visionDirectResult.model_metadata?.provider === "mock" ? "[DEMO FIXTURE OBSERVATION]" : "[ON-DEVICE DETERMINISTIC CV]"}
+                </span>
+              </div>
+              <h2 style={{ fontFamily: "var(--font-display)", fontSize: "24px", color: "var(--ink)", fontWeight: 500, margin: 0 }}>
+                {visionDirectResult.image_provenance.filename} · Visual Inspection
+              </h2>
+            </div>
+            <VerdictBadge verdict="VERIFIED" />
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gap: 12,
+              background: "var(--bg-0)",
+              padding: "12px 14px",
+              borderRadius: "var(--radius-panel)",
+              fontFamily: "var(--font-mono)",
+              fontSize: "12px",
+              border: "1px solid var(--line)",
+              marginBottom: 16,
+            }}
+          >
+            <div>
+              <span style={{ color: "var(--ink-3)" }}>{t("visionProvenanceFile")} </span>
+              <span style={{ color: "var(--ink)" }}>{visionDirectResult.image_provenance.filename}</span>
+            </div>
+            <div>
+              <span style={{ color: "var(--ink-3)" }}>{t("visionProvenanceMime")} </span>
+              <span style={{ color: "var(--ink)" }}>{visionDirectResult.image_provenance.mime_type}</span>
+            </div>
+            <div>
+              <span style={{ color: "var(--ink-3)" }}>{t("visionProvenanceSize")} </span>
+              <span style={{ color: "var(--ink)" }}>{visionDirectResult.image_provenance.file_size_bytes} B</span>
+            </div>
+            <div>
+              <span style={{ color: "var(--ink-3)" }}>{t("visionProvenanceSha")} </span>
+              <span style={{ color: "var(--ink)" }}>{visionDirectResult.image_provenance.sha256_hash.slice(0, 16)}...</span>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {visionDirectResult.findings.map((f) => (
+              <div
+                key={f.finding_id}
+                style={{
+                  background: "var(--bg-0)",
+                  border: "1px solid var(--line)",
+                  padding: "14px 16px",
+                  borderRadius: "var(--radius-panel)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--brass)", fontWeight: 600 }}>
+                    {f.finding_type}
+                  </span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
+                    {t("visionConfidence")} {(f.confidence * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <p style={{ fontSize: "14px", color: "var(--ink)", lineHeight: 1.5, margin: "0 0 8px" }}>
+                  {f.description}
+                </p>
+                <div style={{ display: "flex", gap: 16, fontSize: "12px", fontFamily: "var(--font-mono)", color: "var(--ink-3)" }}>
+                  {f.observed_value !== undefined && (
+                    <span style={{ color: "var(--brass)", fontWeight: 600 }}>
+                      {t("visionObserved")} {f.observed_value} {f.unit || ""}
+                    </span>
+                  )}
+                  <span>{t("visionSeverity")} {f.severity}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </EnamelSurface>
       ) : !response ? (
         <EnamelSurface variant="base" padding="spacious">
           <div style={{ textAlign: "center", padding: "36px 20px" }}>
@@ -670,10 +849,10 @@ export function AIWorkspaceView({
               CONTROL PLANE READY
             </span>
             <h3 style={{ fontFamily: "var(--font-display)", fontSize: "22px", color: "var(--ink)", margin: "8px 0", fontWeight: 500 }}>
-              Select an Industrial Case Above or Dispatch a Query
+              {t("controlPlaneReadyTitle")}
             </h3>
             <p style={{ fontFamily: "var(--font-ui)", fontSize: "14px", color: "var(--ink-2)", maxWidth: "52ch", margin: "0 auto 18px" }}>
-              Click <strong>&quot;Run ▶&quot;</strong> on Cases 01, 02, 03, or 04 to execute the sovereign mission pipeline with strict determinism and independent verification.
+              {t("controlPlaneReadyDesc")}
             </p>
             {activeScenarioId && (
               <button
@@ -706,14 +885,14 @@ export function AIWorkspaceView({
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-              <span>SCENARIO: <strong style={{ color: "var(--brass)" }}>{executedScenario}</strong></span>
-              <span>RUN ID: <strong style={{ color: "var(--ink)" }}>{runId}</strong></span>
-              <span>STATE: <strong style={{ color: "var(--sage)" }}>{executionState}</strong></span>
-              <span>ROLE: <strong style={{ color: "var(--ink-2)" }}>{role}</strong></span>
-              <span>LANG: <strong style={{ color: "var(--brass)" }}>{(response?.language || selectedLanguage).toUpperCase()}</strong></span>
+              <span>{t("runIdentityScenario")} <strong style={{ color: "var(--brass)" }}>{executedScenario}</strong></span>
+              <span>{t("runIdentityRunId")} <strong style={{ color: "var(--ink)" }}>{runId}</strong></span>
+              <span>{t("runIdentityState")} <strong style={{ color: "var(--sage)" }}>{executionState}</strong></span>
+              <span>{t("runIdentityRole")} <strong style={{ color: "var(--ink-2)" }}>{role}</strong></span>
+              <span>{t("runIdentityLang")} <strong style={{ color: "var(--brass)" }}>{(response?.language || language).toUpperCase()}</strong></span>
               {response?.model_route && (
                 <span>
-                  ROUTER: <strong style={{ color: "var(--sage)" }}>{String(response.model_route.target_model || "Qwen3 8B")}</strong> (VRAM: {String(response.model_route.vram_profile || "5.2GB")})
+                  {t("runIdentityRouter")} <strong style={{ color: "var(--sage)" }}>{String(response.model_route.target_model || "Qwen3 8B")}</strong> (VRAM: {String(response.model_route.vram_profile || "5.2GB")})
                 </span>
               )}
             </div>
@@ -729,16 +908,88 @@ export function AIWorkspaceView({
                   cursor: isExportingReport ? "not-allowed" : "pointer",
                 }}
               >
-                {isExportingReport ? "Generating .docx..." : "📄 Export Word Report (.docx)"}
+                {isExportingReport ? t("runIdentityGeneratingDocx") : t("runIdentityExportDocx")}
               </button>
               <div style={{ color: "var(--ink-3)" }}>
-                SOVEREIGN LOCAL RUNTIME · ZERO CLOUD CALLS
+                {t("runIdentitySovereignBadge")}
               </div>
             </div>
           </div>
 
-          {/* CASE 03: UNAUTHORIZED ACTUATION (POLICY DENIAL) */}
-          {(executedScenario === "policy_denial" || isPolicyDenied) ? (
+          {/* CONVERSATIONAL RESPONSE (GREETING OR GENERAL CAPABILITIES) */}
+          {isGreetingResponse ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--sage)", letterSpacing: "0.08em" }}>
+                      {t("convTitle")}
+                    </span>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
+                      {t("convSubtitle")}
+                    </span>
+                  </div>
+                  <h2 style={{ fontFamily: "var(--font-display)", fontSize: "26px", color: "var(--ink)", fontWeight: 500, lineHeight: 1.15 }}>
+                    {query || "Conversational Inquiry"}
+                  </h2>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)", textTransform: "uppercase" }}>
+                    Status
+                  </span>
+                  <VerdictBadge verdict="VERIFIED" />
+                </div>
+              </div>
+
+              <Divider style={{ margin: "2px 0" }} />
+
+              {/* Conversational Explanation Banner */}
+              <div style={{ background: "rgba(156, 195, 168, 0.08)", border: "1px solid var(--sage)", borderRadius: "var(--radius-panel)", padding: "20px 24px" }}>
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: "15px", color: "var(--ink)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                  {response?.final_answer}
+                </div>
+              </div>
+
+              {/* Honest Sovereign Metadata Strip */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gap: 14,
+                  background: "var(--bg-0)",
+                  border: "1px solid var(--line)",
+                  borderRadius: "var(--radius-panel)",
+                  padding: "14px 18px",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "12px",
+                }}
+              >
+                <div>
+                  <span style={{ color: "var(--ink-3)", display: "block" }}>LATENCY</span>
+                  <strong style={{ color: "var(--ink)", fontSize: "20px" }}>
+                    {response?.latency_ms ? response.latency_ms.toFixed(0) : "0"} ms
+                  </strong>
+                  <span style={{ color: "var(--ink-3)", display: "block", fontSize: "11px", marginTop: 2 }}>Local on-premise execution</span>
+                </div>
+                <div>
+                  <span style={{ color: "var(--ink-3)", display: "block" }}>REASONING MODEL</span>
+                  <strong style={{ color: "var(--sage)", fontSize: "20px" }}>
+                    {response?.model_name || "Qwen3 8B"}
+                  </strong>
+                  <span style={{ color: "var(--ink-3)", display: "block", fontSize: "11px", marginTop: 2 }}>Strictly sovereign / zero cloud egress</span>
+                </div>
+                <div>
+                  <span style={{ color: "var(--ink-3)", display: "block" }}>PLANT ACTUATION</span>
+                  <strong style={{ color: "var(--brass)", fontSize: "20px" }}>
+                    INERT (0 TOOLS)
+                  </strong>
+                  <span style={{ color: "var(--ink-3)", display: "block", fontSize: "11px", marginTop: 2 }}>No physical plant mutation triggered</span>
+                </div>
+              </div>
+            </div>
+          ) : (isDemoScenarioResponse && executedScenario === "policy_denial") ? (
+            /* CASE 03: UNAUTHORIZED ACTUATION (POLICY DENIAL) */
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {/* Header */}
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
@@ -832,7 +1083,7 @@ export function AIWorkspaceView({
                 </div>
               </div>
             </div>
-          ) : (executedScenario === "prompt_injection" || (response?.status === "DIRECT_ANSWER" && response?.final_answer?.toLowerCase().includes("quarantin"))) ? (
+          ) : (isDemoScenarioResponse && executedScenario === "prompt_injection") ? (
             /* CASE 04: PROMPT INJECTION / DATA QUARANTINE */
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {/* Header */}
@@ -920,7 +1171,7 @@ export function AIWorkspaceView({
                 </div>
               </div>
             </div>
-          ) : executedScenario === "r204_investigation" ? (
+          ) : (isDemoScenarioResponse && executedScenario === "r204_investigation") ? (
             /* CASE 01: STRUCTURAL INTEGRITY & THICKNESS ASSESSMENT */
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {/* Dossier Header */}
@@ -1184,7 +1435,7 @@ export function AIWorkspaceView({
                 </div>
               </div>
             </div>
-          ) : executedScenario === "r204_pressure_variance" ? (
+          ) : (isDemoScenarioResponse && executedScenario === "r204_pressure_variance") ? (
             /* CASE 02: PRESSURE VARIANCE INVESTIGATION */
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {/* Dossier Header */}
@@ -1640,10 +1891,10 @@ export function AIWorkspaceView({
               </div>
 
               {/* Deterministic Calculations Table if available */}
-              {(((response.calculations && response.calculations.length > 0) || (response.verification?.calculations && response.verification.calculations.length > 0)) && (
+              {(((response.calculations && response.calculations.length > 0) || (response.verification?.calculations && response.verification.calculations.length > 0)) ? (
                 <div style={{ background: "var(--bg-0)", border: "1px solid var(--line)", borderRadius: "var(--radius-panel)", padding: "16px 20px" }}>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", letterSpacing: "0.06em", display: "block", marginBottom: 10 }}>
-                    DETERMINISTIC VERIFIED CALCULATIONS
+                    {t("cardCalculationsTitle")}
                   </span>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {(response.calculations || response.verification?.calculations || []).map((calc: CalculationResult, idx: number) => (
@@ -1660,7 +1911,16 @@ export function AIWorkspaceView({
                     ))}
                   </div>
                 </div>
-              ))}
+              ) : !isGreetingResponse ? (
+                <div style={{ background: "var(--bg-0)", border: "1px solid var(--line)", borderRadius: "var(--radius-panel)", padding: "16px 20px" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>
+                    {t("cardCalculationsTitle")}
+                  </span>
+                  <p style={{ color: "var(--ink-3)", fontFamily: "var(--font-ui)", fontSize: "13px", margin: 0 }}>
+                    {t("cardNoCalculations")}
+                  </p>
+                </div>
+              ) : null)}
             </div>
           )}
 

@@ -552,8 +552,55 @@ async def export_mission_report(data: Dict[str, Any]) -> Response:
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate report: {exc}"
+            detail=f"Failed to generate report: {exc}",
         )
+
+
+# =========================================================================
+# Sovereign Local Voice Assistant APIs
+# =========================================================================
+
+from app.voice import (
+    VoiceEngineStatus,
+    VoiceSynthesizeRequest,
+    VoiceSynthesizeResponse,
+    VoiceTranscribeResponse,
+    voice_service,
+)
+
+
+@app.get("/api/v1/voice/status", response_model=VoiceEngineStatus, tags=["Voice"])
+async def get_voice_engine_status() -> VoiceEngineStatus:
+    """Inspect status of local, on-premise speech recognition and text-to-speech engines."""
+    return voice_service.get_status()
+
+
+@app.post("/api/v1/voice/transcribe", response_model=VoiceTranscribeResponse, tags=["Voice"])
+async def transcribe_voice(
+    file: UploadFile = File(...),
+    language: str = Form("en"),
+) -> VoiceTranscribeResponse:
+    """Transcribe uploaded audio strictly on-premise without cloud transmission."""
+    audio_content = await file.read()
+    if len(audio_content) > 25 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Audio payload exceeds maximum allowable 25MB boundary.",
+        )
+    return await voice_service.transcribe_audio(
+        audio_bytes=audio_content,
+        filename=file.filename or "recording.webm",
+        language=language,
+    )
+
+
+@app.post("/api/v1/voice/synthesize", response_model=VoiceSynthesizeResponse, tags=["Voice"])
+async def synthesize_voice(
+    request: VoiceSynthesizeRequest,
+) -> VoiceSynthesizeResponse:
+    """Synthesize text into speech audio strictly on-premise."""
+    return await voice_service.synthesize_speech(request)
+
 
 
 
