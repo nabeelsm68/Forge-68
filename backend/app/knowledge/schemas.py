@@ -1,7 +1,7 @@
 """Pydantic request and response schemas for the Knowledge Fabric HTTP API."""
 
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.knowledge.models import KnowledgeDocument, RetrievalResult
 from app.security.models import DataClassification
@@ -28,8 +28,28 @@ class KnowledgeIngestRequest(BaseModel):
 class KnowledgeIngestResponse(BaseModel):
     """Response confirming document ingestion, hashing, and chunk indexing."""
     status: str = Field(default="success")
-    document: KnowledgeDocument
-    chunks_created: int
+    document: Optional[KnowledgeDocument] = None
+    chunks_created: int = 0
+    document_id: Optional[str] = None
+    filename: Optional[str] = None
+    chunks_count: Optional[int] = None
+    content_hash: Optional[str] = None
+    classification: Optional[DataClassification] = None
+
+    @model_validator(mode="after")
+    def populate_root_aliases(self) -> "KnowledgeIngestResponse":
+        if self.document is not None:
+            if not self.document_id:
+                self.document_id = self.document.document_id
+            if not self.filename:
+                self.filename = self.document.filename
+            if not self.content_hash:
+                self.content_hash = self.document.content_hash
+            if not self.classification:
+                self.classification = self.document.classification
+            if not self.chunks_count:
+                self.chunks_count = self.chunks_created
+        return self
 
 
 class KnowledgeSearchRequest(BaseModel):

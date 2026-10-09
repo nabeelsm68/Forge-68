@@ -130,12 +130,13 @@ class AgentReasoningService:
 
         # 1. Structured trace & log: AGENT_REQUEST
         logger.info(
-            "[AGENT_REQUEST] Query: '%s' | Requester: '%s' | Role: '%s' | Clearance: '%s' | Run: '%s'",
+            "[AGENT_REQUEST] Query: '%s' | Requester: '%s' | Role: '%s' | Clearance: '%s' | Run: '%s' | Lang: '%s'",
             request.query,
             request.requester,
             request.role.value,
             request.classification.value,
             run_id,
+            request.language or "en",
         )
         record_agent_trace(
             AgentEventType.AGENT_REQUEST,
@@ -143,10 +144,87 @@ class AgentReasoningService:
                 "query": request.query,
                 "classification": request.classification.value,
                 "has_approval": request.has_approval,
+                "language": request.language or "en",
             },
         )
 
-        # 1b. Prompt-Security Boundary: Scan for adversarial injection patterns
+        from app.models.router import TaskType, task_model_router
+        reasoning_route = task_model_router.route(TaskType.REASONING)
+        route_dict = reasoning_route.model_dump()
+        target_lang = request.language or "en"
+
+        # 1b. Check for conversational greeting or general capability inquiry
+        clean_q = request.query.strip().lower()
+        greeting_patterns = [
+            r"^(hi|hello|hey|namaste|namaskara|greetings)\b",
+            r"^who are you\??$",
+            r"^what can you do\??$",
+            r"^what is forge\??$",
+            r"^help\??$",
+        ]
+        is_greeting = any(re.search(pat, clean_q) for pat in greeting_patterns)
+
+        if is_greeting and not any(tag in clean_q for tag in ["r-204", "pi-204", "p-201", "pressure", "vibration", "actuator", "sop", "sensor"]):
+            if target_lang == "hi":
+                greeting_text = (
+                    "नमस्ते। मैं FORGE हूँ — संप्रभु औद्योगिक AI नियंत्रण तल (Sovereign Industrial AI Control Plane)। "
+                    "मैं पूरी तरह स्थानीय, एयर-गैप्ड और ऑन-प्रिमाइसेस मॉडल द्वारा संचालित हूँ। "
+                    "मैं रिएक्टर R-204, ट्रांसमीटर PI-204, और पंप P-201 जैसे प्लांट संपत्तियों के लिए "
+                    "SOP अनुपालन, रखरखाव इतिहास, दबाव विचरण और सुरक्षा नीतियों की निष्पक्ष जांच कर सकता हूँ। "
+                    "मैं आपकी क्या सहायता कर सकता हूँ?"
+                )
+            elif target_lang == "kn":
+                greeting_text = (
+                    "ನಮಸ್ಕಾರ. ನಾನು FORGE — ಸಾರ್ವಭೌಮ ಕೈಗಾರಿಕಾ AI ನಿಯಂತ್ರಣ ತಾಣ (Sovereign Industrial AI Control Plane). "
+                    "ಸಂಪೂರ್ಣವಾಗಿ ಸ್ಥಳೀಯ ಮತ್ತು ಆನ್‌-ಪ್ರೆಮಿಸಸ್ ತಂತ್ರಜ್ಞಾನದಲ್ಲಿ ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತೇನೆ. "
+                    "R-204 ರಿಯಾಕ್ಟರ್, PI-204 ಪ್ರೆಶರ್ ಟ್ರಾನ್ಸ್‌ಮಿಟರ್, ಮತ್ತು P-201 ಪಂಪ್‌ಗಳ ಟೆಲಿಮೆಟ್ರಿ, "
+                    "SOP ಮಿತಿಗಳು ಮತ್ತು ನಿರ್ವಹಣಾ ಇತಿಹಾಸವನ್ನು ಪರಿಶೀಲಿಸಲು ನಾನು ಸಿದ್ಧನಾಗಿದ್ದೇನೆ. "
+                    "ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?"
+                )
+            else:
+                greeting_text = (
+                    "Hello. I am FORGE — Sovereign Industrial AI Control Plane, operating entirely on-premise "
+                    "under sovereign air-gapped governance. I monitor industrial plant telemetry, verify SOP compliance, "
+                    "analyze equipment history (e.g., R-204, PI-204, P-201), and execute deterministic safety checks "
+                    "with zero external cloud data egress. How may I assist your engineering operations today?"
+                )
+            greeting_plan = AgentPlan(
+                action=AgentActionType.DIRECT,
+                direct_answer=greeting_text,
+                reasoning="Direct sovereign agent introduction and operational capability overview.",
+            )
+            record_agent_trace(
+                AgentEventType.AGENT_FINAL_RESPONSE,
+                {"action": "direct", "type": "conversational_greeting", "language": target_lang},
+            )
+            return AgentQueryResponse(
+                query=request.query,
+                final_answer=greeting_text,
+                status=AgentQueryStatus.DIRECT_ANSWER,
+                language=target_lang,
+                plan=greeting_plan,
+                agent_plan=greeting_plan,
+                verification=VerificationResult(
+                    status=VerificationStatus.VERIFIED,
+                    summary="Direct sovereign conversational query processed with zero external calls.",
+                    checks=[],
+                ),
+                scenario_id=scenario_id,
+                run_id=run_id,
+                execution_state="COMPLETED",
+                model_route=route_dict,
+                timing={
+                    "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
+                    "planning_duration_ms": 0.0,
+                    "knowledge_retrieval_duration_ms": 0.0,
+                    "tool_execution_duration_ms": 0.0,
+                    "vision_duration_ms": 0.0,
+                    "verification_duration_ms": 0.0,
+                    "synthesis_duration_ms": 0.0,
+                },
+            )
+
+        # 1c. Prompt-Security Boundary: Scan for adversarial injection patterns
         from app.security import detect_prompt_injection
         detected_injection = detect_prompt_injection(request.query)
         if detected_injection:
@@ -189,9 +267,11 @@ class AgentReasoningService:
                 query=request.query,
                 final_answer=f"Failed to parse structured model decision: {str(exc)}",
                 status=AgentQueryStatus.INVALID_MODEL_OUTPUT,
+                language=target_lang,
                 scenario_id=scenario_id,
                 run_id=run_id,
                 execution_state="FAILED",
+                model_route=route_dict,
                 timing={
                     "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
                     "planning_duration_ms": round(planning_duration_ms, 2),
@@ -221,13 +301,19 @@ class AgentReasoningService:
         if plan.action == AgentActionType.DIRECT:
             final_answer = plan.direct_answer or plan.reasoning or ""
             if not final_answer.strip():
+                lang_sys = ""
+                if target_lang == "hi":
+                    lang_sys = " Respond in Hindi (हिन्दी), keeping equipment IDs (e.g. R-204, PI-204) and numerical values in English/digits."
+                elif target_lang == "kn":
+                    lang_sys = " Respond in Kannada (ಕನ್ನಡ), keeping equipment IDs (e.g. R-204, PI-204) and numerical values in English/digits."
+
                 direct_req = ModelRequest(
                     messages=[
                         ModelMessage(
                             role="system",
                             content=(
                                 "You are the reasoning engine of FORGE Sovereign Industrial AI Control Plane. "
-                                "Provide a direct, accurate, and concise industrial engineering response."
+                                f"Provide a direct, accurate, and concise industrial engineering response.{lang_sys}"
                             ),
                         ),
                         ModelMessage(role="user", content=request.query),
@@ -254,18 +340,20 @@ class AgentReasoningService:
             logger.info("[AGENT_FINAL_RESPONSE] Emitted direct response.")
             record_agent_trace(
                 AgentEventType.AGENT_FINAL_RESPONSE,
-                {"action": "direct", "final_answer_length": len(final_answer)},
+                {"action": "direct", "final_answer_length": len(final_answer), "language": target_lang},
             )
             return AgentQueryResponse(
                 query=request.query,
                 final_answer=final_answer,
                 status=AgentQueryStatus.DIRECT_ANSWER,
+                language=target_lang,
                 plan=plan,
                 agent_plan=plan,
                 verification=direct_verification,
                 scenario_id=scenario_id,
                 run_id=run_id,
                 execution_state="COMPLETED",
+                model_route=route_dict,
                 timing={
                     "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
                     "planning_duration_ms": round(planning_duration_ms, 2),
@@ -550,6 +638,7 @@ class AgentReasoningService:
                 query=request.query,
                 final_answer=f"Execution blocked by sovereign policy: {first_denial_reason}",
                 status=AgentQueryStatus.POLICY_DENIED,
+                language=target_lang,
                 plan=plan,
                 agent_plan=plan,
                 knowledge_queries=plan.knowledge_queries,
@@ -565,6 +654,7 @@ class AgentReasoningService:
                 scenario_id=scenario_id,
                 run_id=run_id,
                 execution_state="COMPLETED",
+                model_route=route_dict,
                 timing={
                     "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
                     "planning_duration_ms": round(planning_duration_ms, 2),
@@ -582,6 +672,7 @@ class AgentReasoningService:
                 query=request.query,
                 final_answer="Industrial tool execution failed.",
                 status=AgentQueryStatus.TOOL_ERROR,
+                language=target_lang,
                 plan=plan,
                 agent_plan=plan,
                 knowledge_queries=plan.knowledge_queries,
@@ -597,6 +688,7 @@ class AgentReasoningService:
                 scenario_id=scenario_id,
                 run_id=run_id,
                 execution_state="FAILED",
+                model_route=route_dict,
                 timing={
                     "total_duration_ms": round((time.perf_counter() - t_start) * 1000.0, 2),
                     "planning_duration_ms": round(planning_duration_ms, 2),
@@ -662,6 +754,27 @@ class AgentReasoningService:
             conflicts_formatted=conflicts_formatted,
         )
 
+        if target_lang == "hi":
+            synthesis_prompt += (
+                "\n\n=== MULTILINGUAL GENERATION DIRECTIVE (HINDI) ===\n"
+                "You MUST generate your final engineering response in Hindi (हिन्दी).\n"
+                "CRITICAL RULES FOR MULTILINGUAL FIDELITY:\n"
+                "1. Keep all equipment tags, asset IDs, and instrument codes in exact Latin characters (e.g., R-204, PI-204, P-201, E-301).\n"
+                "2. Preserve all numerical values, pressures, temperatures, percentages, and units EXACTLY (e.g., 34.8 bar, 31.2 bar, +11.54%, mm, °C).\n"
+                "3. Keep all citation identifiers intact (e.g., [doc:...], [calc:...]).\n"
+                "4. Maintain strict engineering accuracy according to the deterministic verification assessment above.\n"
+            )
+        elif target_lang == "kn":
+            synthesis_prompt += (
+                "\n\n=== MULTILINGUAL GENERATION DIRECTIVE (KANNADA) ===\n"
+                "You MUST generate your final engineering response in Kannada (ಕನ್ನಡ).\n"
+                "CRITICAL RULES FOR MULTILINGUAL FIDELITY:\n"
+                "1. Keep all equipment tags, asset IDs, and instrument codes in exact Latin characters (e.g., R-204, PI-204, P-201, E-301).\n"
+                "2. Preserve all numerical values, pressures, temperatures, percentages, and units EXACTLY (e.g., 34.8 bar, 31.2 bar, +11.54%, mm, °C).\n"
+                "3. Keep all citation identifiers intact (e.g., [doc:...], [calc:...]).\n"
+                "4. Maintain strict engineering accuracy according to the deterministic verification assessment above.\n"
+            )
+
         synthesis_req = ModelRequest(
             messages=[
                 ModelMessage(role="system", content=synthesis_prompt),
@@ -702,6 +815,7 @@ class AgentReasoningService:
                 "status": AgentQueryStatus.SUCCESS.value,
                 "evidence_count": len(evidence_set.all_evidence),
                 "verification_status": verification_result.status.value,
+                "language": target_lang,
             },
         )
 
@@ -715,6 +829,7 @@ class AgentReasoningService:
             query=request.query,
             final_answer=final_answer,
             status=AgentQueryStatus.SUCCESS,
+            language=target_lang,
             plan=plan,
             agent_plan=plan,
             knowledge_queries=plan.knowledge_queries,
@@ -730,6 +845,7 @@ class AgentReasoningService:
             scenario_id=scenario_id,
             run_id=run_id,
             execution_state="COMPLETED",
+            model_route=route_dict,
             timing={
                 "total_duration_ms": round(total_duration_ms, 2),
                 "planning_duration_ms": round(planning_duration_ms, 2),

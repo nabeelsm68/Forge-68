@@ -283,6 +283,7 @@ class DemoOrchestrationService:
             image_path=image_path,
             scenario_id=scenario_id.value,
             run_id=run_id,
+            language=request.language or "en",
         )
 
         # 5. Execute full agent loop through real services with monotonic timing

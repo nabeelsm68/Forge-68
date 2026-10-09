@@ -1,10 +1,11 @@
 """FORGE Sovereign Industrial AI Control Plane - Main Application."""
 
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List
-from fastapi import FastAPI, HTTPException, status
+from typing import Any, Dict, List, Optional
+import uuid
+from fastapi import FastAPI, HTTPException, status, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from pathlib import Path
 
@@ -20,8 +21,10 @@ from app.knowledge import (
     UnsupportedFormatError,
     knowledge_service,
 )
-from app.models import get_model_provider
+from app.models import get_model_provider, task_model_router
+from app.reports import report_generator
 from app.security import (
+    DataClassification,
     PolicyDecision,
     PolicyDecisionType,
     PolicyEvaluationRequest,
@@ -334,6 +337,63 @@ async def list_knowledge_documents() -> Dict[str, Any]:
     }
 
 
+@app.get("/api/v1/knowledge/documents/{document_id}/content", tags=["Knowledge"])
+async def get_knowledge_document_content(document_id: str) -> Dict[str, Any]:
+    """Retrieve full extracted text preview, classification, and OCR status of a document."""
+    try:
+        return knowledge_service.get_document_content(document_id)
+    except FileNotFoundError as fnf:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(fnf))
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to load document content: {exc}")
+
+
+@app.post("/api/v1/knowledge/upload", response_model=KnowledgeIngestResponse, tags=["Knowledge"])
+async def upload_knowledge_document(
+    file: UploadFile = File(...),
+    classification: Optional[str] = Form(None),
+    document_type: Optional[str] = Form(None),
+    equipment_ids: Optional[str] = Form(None),
+) -> KnowledgeIngestResponse:
+    """Upload and ingest a local plant document (.pdf, .txt, .md) into Knowledge Fabric."""
+    if not file.filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No filename provided.")
+
+    try:
+        content_bytes = await file.read()
+        equip_list = [e.strip() for e in equipment_ids.split(",") if e.strip()] if equipment_ids else None
+        class_enum = DataClassification(classification) if classification else None
+
+        doc, chunks_count = await knowledge_service.upload_and_ingest(
+            filename=file.filename,
+            content_bytes=content_bytes,
+            classification=class_enum,
+            document_type=document_type,
+            equipment_ids=equip_list,
+        )
+
+        return KnowledgeIngestResponse(
+            status="success",
+            document=doc,
+            chunks_created=chunks_count,
+            document_id=doc.document_id,
+            filename=doc.filename,
+            chunks_count=chunks_count,
+            content_hash=doc.content_hash,
+            classification=doc.classification,
+        )
+    except PathTraversalError as pte:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(pte))
+    except UnsupportedFormatError as ufe:
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(ufe))
+    except OcrRequiredError as ore:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"OCR_REQUIRED: {ore}")
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Upload failed: {exc}")
+
+
 # =========================================================================
 # Milestone 7: Multimodal Engineering Intelligence APIs
 # =========================================================================
@@ -456,6 +516,45 @@ async def get_security_matrix() -> List[SecurityTestResult]:
 async def get_security_report() -> SecurityBoundaryReport:
     """Produce deterministic, auditable security report summarizing all 10 boundary tests."""
     return run_security_matrix()
+
+
+# =========================================================================
+# Task Model Routing & Hardware Awareness APIs
+# =========================================================================
+
+@app.get("/api/v1/models/routes", tags=["System"])
+@app.get("/api/v1/system/models/routes", tags=["System"])
+async def get_model_routes() -> List[Dict[str, Any]]:
+    """Inspect active task-to-model routing table, provider bindings, and GPU VRAM profiles."""
+    routes = await task_model_router.get_all_routes()
+    return [r.model_dump() for r in routes]
+
+
+# =========================================================================
+# Mission Report Export API (.docx)
+# =========================================================================
+
+@app.post("/api/v1/reports/export", tags=["Reports"])
+async def export_mission_report(data: Dict[str, Any]) -> Response:
+    """Generate and stream a genuine Microsoft Word (.docx) mission audit report."""
+    try:
+        run_id = data.get("run_id") or f"run-{uuid.uuid4().hex[:8]}"
+        docx_bytes = report_generator.generate_mission_docx(data)
+        safe_filename = f"FORGE-Mission-Report-{run_id}.docx"
+        return Response(
+            content=docx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_filename}"',
+                "X-Run-ID": str(run_id),
+            },
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate report: {exc}"
+        )
+
 
 
 

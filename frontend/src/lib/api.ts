@@ -128,15 +128,18 @@ export interface AgentQueryRequest {
   has_approval?: boolean;
   image_path?: string;
   image_base64?: string;
+  language?: "en" | "hi" | "kn";
 }
 
 export interface AgentQueryResponse {
   query: string;
   final_answer: string;
   status: AgentQueryStatus;
+  language?: string;
   scenario_id?: string;
   run_id?: string;
   execution_state?: string;
+  model_route?: Record<string, unknown>;
   plan?: AgentPlan;
   agent_plan?: AgentPlan;
   knowledge_queries: KnowledgeQueryPlan[];
@@ -507,6 +510,7 @@ export interface DemoRunRequest {
   role?: Role;
   classification?: DataClassification;
   deterministic?: boolean;
+  language?: "en" | "hi" | "kn";
 }
 
 export interface DemoRunResponse extends AgentQueryResponse {
@@ -694,6 +698,87 @@ export interface RuntimeCapabilities {
 
 export async function fetchRuntimeCapabilities(): Promise<RuntimeCapabilities> {
   return apiFetch<RuntimeCapabilities>("/api/runtime/capabilities");
+}
+
+// =========================================================================
+// Phase 2, 4, 5: Document Reader, Upload, Word Report, Model Routing APIs
+// =========================================================================
+
+export interface DocumentChunkItem {
+  chunk_id: string;
+  chunk_index: number;
+  text: string;
+}
+
+export interface DocumentContentResponse {
+  document_id: string;
+  filename: string;
+  classification: string;
+  document_type: string;
+  chunks_count: number;
+  content_hash: string;
+  ocr_status: "EXTRACTED" | "OCR_REQUIRED" | "FAILED" | string;
+  extracted_text: string;
+  chunks: DocumentChunkItem[];
+}
+
+export async function fetchDocumentContent(documentId: string): Promise<DocumentContentResponse> {
+  return apiFetch<DocumentContentResponse>(`/api/v1/knowledge/documents/${encodeURIComponent(documentId)}/content`);
+}
+
+export async function uploadKnowledgeDocument(formData: FormData): Promise<{
+  document_id: string;
+  filename: string;
+  chunks_count: number;
+  content_hash: string;
+  classification: string;
+}> {
+  const url = `${BACKEND_URL}/api/v1/knowledge/upload`;
+  const res = await fetch(url, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    let parsedMessage = errorText;
+    try {
+      const errObj = JSON.parse(errorText);
+      parsedMessage = errObj.detail || errObj.message || errorText;
+    } catch {
+      // Keep errorText
+    }
+    throw new Error(parsedMessage || `Upload failed with HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function exportWordReport(runData: Record<string, unknown>): Promise<Blob> {
+  const url = `${BACKEND_URL}/api/v1/reports/export`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(runData),
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || `Report export failed with HTTP ${res.status}`);
+  }
+  return res.blob();
+}
+
+export interface ModelRouteInfo {
+  task: string;
+  target_model: string;
+  provider: string;
+  status: string;
+  reason: string;
+  vram_profile: string;
+  is_local: boolean;
+  notes: string;
+}
+
+export async function fetchModelRoutes(): Promise<ModelRouteInfo[]> {
+  return apiFetch<ModelRouteInfo[]>("/api/v1/models/routes");
 }
 
 

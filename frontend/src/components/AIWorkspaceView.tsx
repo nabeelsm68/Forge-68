@@ -11,6 +11,7 @@ import {
   Role,
   VisionAnalyzeResponse,
   analyzeVision,
+  exportWordReport,
   queryAgent,
   resetDemo,
   runDemoScenario,
@@ -56,6 +57,8 @@ export function AIWorkspaceView({
   const [activeSubTab, setActiveSubTab] = useState<"FINDINGS" | "TRACE" | "EVIDENCE" | "CHECKS" | "VISION">("FINDINGS");
   const [isResetting, setIsResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<"en" | "hi" | "kn">("en");
+  const [isExportingReport, setIsExportingReport] = useState<boolean>(false);
 
   const demoScenarios = [
     {
@@ -99,6 +102,43 @@ export function AIWorkspaceView({
       desc: "An untrusted document tries to hijack the AI; FORGE treats it as inert data, not commands.",
     },
   ];
+
+  const handleExportReport = async () => {
+    if (!response) return;
+    setIsExportingReport(true);
+    setError(null);
+    try {
+      const activeRunId = (response as DemoRunResponse)?.run_id || response?.execution_event_id || `run-local-${Date.now()}`;
+      const payload = {
+        run_id: activeRunId,
+        scenario_id: (response as DemoRunResponse)?.scenario_id || activeScenarioId || "custom_mission",
+        query: response?.query || query,
+        final_answer: response?.final_answer || "",
+        status: response?.status,
+        language: response?.language || selectedLanguage,
+        execution_state: (response as DemoRunResponse)?.execution_state || "COMPLETED",
+        timing: response?.timing,
+        policy_decisions: response?.policy_decisions || (response?.policy_decision ? [response.policy_decision] : []),
+        evidence_set: response?.evidence_set,
+        verification: response?.verification,
+        model_route: response?.model_route,
+      };
+
+      const blob = await exportWordReport(payload);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `FORGE-Mission-Report-${activeRunId}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: unknown) {
+      setError(`Report export failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsExportingReport(false);
+    }
+  };
 
   const handleResetDemo = async () => {
     setIsResetting(true);
@@ -164,6 +204,7 @@ export function AIWorkspaceView({
         role,
         classification: clearance,
         deterministic: true,
+        language: selectedLanguage,
       });
       setResponse(res);
       setActiveSubTab("FINDINGS");
@@ -189,6 +230,7 @@ export function AIWorkspaceView({
       role,
       classification: clearance,
       requester: `${role.toLowerCase()}_operator`,
+      language: selectedLanguage,
     };
 
     if (selectedImage === "custom" && customBase64) {
@@ -539,6 +581,43 @@ export function AIWorkspaceView({
             >
               Analyze Image Only
             </button>
+
+            {/* Multilingual Selector */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                background: "var(--bg-0)",
+                border: "1px solid var(--line)",
+                padding: "3px 6px",
+                borderRadius: "var(--radius-sm)",
+              }}
+            >
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)", marginRight: 2 }}>
+                Lang:
+              </span>
+              {(["en", "hi", "kn"] as const).map((lng) => (
+                <button
+                  key={lng}
+                  type="button"
+                  onClick={() => setSelectedLanguage(lng)}
+                  style={{
+                    background: selectedLanguage === lng ? "var(--brass)" : "transparent",
+                    color: selectedLanguage === lng ? "#000" : "var(--ink-2)",
+                    border: "none",
+                    borderRadius: "2px",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "11px",
+                    fontWeight: selectedLanguage === lng ? 600 : 400,
+                    padding: "2px 6px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {lng === "en" ? "EN" : lng === "hi" ? "HI" : "KN"}
+                </button>
+              ))}
+            </div>
           </div>
 
           <button
@@ -631,9 +710,30 @@ export function AIWorkspaceView({
               <span>RUN ID: <strong style={{ color: "var(--ink)" }}>{runId}</strong></span>
               <span>STATE: <strong style={{ color: "var(--sage)" }}>{executionState}</strong></span>
               <span>ROLE: <strong style={{ color: "var(--ink-2)" }}>{role}</strong></span>
+              <span>LANG: <strong style={{ color: "var(--brass)" }}>{(response?.language || selectedLanguage).toUpperCase()}</strong></span>
+              {response?.model_route && (
+                <span>
+                  ROUTER: <strong style={{ color: "var(--sage)" }}>{String(response.model_route.target_model || "Qwen3 8B")}</strong> (VRAM: {String(response.model_route.vram_profile || "5.2GB")})
+                </span>
+              )}
             </div>
-            <div style={{ color: "var(--ink-3)" }}>
-              SOVEREIGN LOCAL RUNTIME · ZERO CLOUD CALLS
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={handleExportReport}
+                disabled={isExportingReport}
+                className="btn-brass-primary"
+                style={{
+                  fontSize: "11px",
+                  padding: "4px 12px",
+                  cursor: isExportingReport ? "not-allowed" : "pointer",
+                }}
+              >
+                {isExportingReport ? "Generating .docx..." : "📄 Export Word Report (.docx)"}
+              </button>
+              <div style={{ color: "var(--ink-3)" }}>
+                SOVEREIGN LOCAL RUNTIME · ZERO CLOUD CALLS
+              </div>
             </div>
           </div>
 

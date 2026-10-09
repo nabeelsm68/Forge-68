@@ -193,6 +193,7 @@ class AgentQueryRequest(BaseModel):
     image_base64: Optional[str] = Field(default=None, description="Optional base64 encoded image for multimodal reasoning")
     scenario_id: Optional[str] = Field(default=None, description="Explicit scenario identifier for traceability")
     run_id: Optional[str] = Field(default=None, description="Unique execution run identifier")
+    language: Optional[str] = Field(default="en", description="Target interaction language: 'en', 'hi', or 'kn'")
 
 
 class AgentQueryResponse(BaseModel):
@@ -200,6 +201,7 @@ class AgentQueryResponse(BaseModel):
     query: str
     final_answer: str
     status: AgentQueryStatus
+    language: str = Field(default="en", description="Interaction language")
     plan: Optional[AgentPlan] = None
     agent_plan: Optional[AgentPlan] = None
     knowledge_queries: List[KnowledgeQueryPlan] = Field(default_factory=list)
@@ -211,6 +213,7 @@ class AgentQueryResponse(BaseModel):
     scenario_id: Optional[str] = Field(default=None, description="Explicit scenario identifier")
     run_id: Optional[str] = Field(default=None, description="Unique execution run identifier")
     execution_state: str = Field(default="COMPLETED", description="Current execution state")
+    model_route: Optional[Dict[str, Any]] = Field(default=None, description="Task model routing decision")
 
     # Milestone 3 backward compatibility fields
     tool_call: Optional[Dict[str, Any]] = None

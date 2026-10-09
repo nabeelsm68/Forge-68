@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from "react";
 import {
   HealthResponse,
+  ModelRouteInfo,
   SecurityBoundaryReport,
   SovereigntyStatusResponse,
   fetchHealth,
+  fetchModelRoutes,
   fetchSecurityReport,
   fetchSovereigntyStatus,
 } from "@/lib/api";
@@ -21,6 +23,7 @@ export function SovereigntyView() {
   const [sovereignty, setSovereignty] = useState<SovereigntyStatusResponse | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [securityReport, setSecurityReport] = useState<SecurityBoundaryReport | null>(null);
+  const [modelRoutes, setModelRoutes] = useState<ModelRouteInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,14 +33,16 @@ export function SovereigntyView() {
     setIsLoading(true);
     setError(null);
     try {
-      const [sov, h, sec] = await Promise.all([
+      const [sov, h, sec, routes] = await Promise.all([
         fetchSovereigntyStatus(),
         fetchHealth(),
         fetchSecurityReport(),
+        fetchModelRoutes().catch(() => []),
       ]);
       setSovereignty(sov);
       setHealth(h);
       setSecurityReport(sec);
+      setModelRoutes(routes);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -47,12 +52,18 @@ export function SovereigntyView() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([fetchSovereigntyStatus(), fetchHealth(), fetchSecurityReport()])
-      .then(([sov, h, sec]) => {
+    Promise.all([
+      fetchSovereigntyStatus(),
+      fetchHealth(),
+      fetchSecurityReport(),
+      fetchModelRoutes().catch(() => []),
+    ])
+      .then(([sov, h, sec, routes]) => {
         if (active) {
           setSovereignty(sov);
           setHealth(h);
           setSecurityReport(sec);
+          setModelRoutes(routes);
           setIsLoading(false);
         }
       })
@@ -291,6 +302,108 @@ export function SovereigntyView() {
           ))}
         </div>
       </div>
+
+      {/* Task Model Routing & Hardware Awareness Table (Phase 5) */}
+      <EnamelSurface variant="base" padding="spacious">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <BrassLabel variant="solid">TASK MODEL ROUTER</BrassLabel>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "22px", color: "var(--ink)", fontWeight: 500, margin: 0 }}>
+              Hardware-Aware Local Model Allocation
+            </h2>
+          </div>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "11px",
+              color: "var(--sage)",
+              background: "rgba(156, 195, 168, 0.08)",
+              padding: "3px 10px",
+              borderRadius: "var(--radius-pill)",
+              border: "1px solid var(--sage)",
+            }}
+          >
+            RTX 4060 LAPTOP GPU (8GB VRAM BOUNDARY)
+          </span>
+        </div>
+
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: "14px", color: "var(--ink-2)", margin: "0 0 16px 0", maxWidth: "80ch" }}>
+          Task routing dynamically binds specialized local engines according to VRAM capacity constraints. Reasoning executes on Qwen3 8B (5.2GB VRAM), while vision and OCR leverage sequential memory allocation and host computer vision to prevent out-of-memory GPU crash.
+        </p>
+
+        <div style={{ overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontFamily: "var(--font-mono)",
+              fontSize: "12px",
+              textAlign: "left",
+            }}
+          >
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--line)", background: "var(--bg-0)" }}>
+                <th style={{ padding: "10px 12px", color: "var(--brass)" }}>TASK TYPE</th>
+                <th style={{ padding: "10px 12px", color: "var(--ink)" }}>TARGET MODEL</th>
+                <th style={{ padding: "10px 12px", color: "var(--ink-2)" }}>PROVIDER</th>
+                <th style={{ padding: "10px 12px", color: "var(--ink-2)" }}>STATUS</th>
+                <th style={{ padding: "10px 12px", color: "var(--ink-2)" }}>VRAM PROFILE</th>
+                <th style={{ padding: "10px 12px", color: "var(--ink-2)" }}>ROUTING REASON & CONSTRAINTS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {modelRoutes && modelRoutes.length > 0 ? (
+                modelRoutes.map((rt, idx) => (
+                  <tr
+                    key={idx}
+                    style={{
+                      borderBottom: "1px solid var(--line)",
+                      background: idx % 2 === 0 ? "var(--bg-1)" : "var(--bg-0)",
+                    }}
+                  >
+                    <td style={{ padding: "10px 12px", color: "var(--brass)", fontWeight: 600 }}>
+                      {rt.task}
+                    </td>
+                    <td style={{ padding: "10px 12px", color: "var(--ink)", fontWeight: 500 }}>
+                      {rt.target_model}
+                    </td>
+                    <td style={{ padding: "10px 12px", color: "var(--ink-2)" }}>
+                      {rt.provider}
+                    </td>
+                    <td style={{ padding: "10px 12px" }}>
+                      <span
+                        style={{
+                          fontSize: "10.5px",
+                          padding: "2px 8px",
+                          borderRadius: "var(--radius-pill)",
+                          color: rt.status.includes("ACTIVE") ? "var(--sage)" : "var(--brass)",
+                          border: `1px solid ${rt.status.includes("ACTIVE") ? "var(--sage)" : "var(--brass)"}`,
+                          background: rt.status.includes("ACTIVE") ? "rgba(156, 195, 168, 0.08)" : "rgba(200, 161, 90, 0.08)",
+                        }}
+                      >
+                        {rt.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: "10px 12px", color: "var(--ink)" }}>
+                      {rt.vram_profile}
+                    </td>
+                    <td style={{ padding: "10px 12px", color: "var(--ink-3)", fontSize: "11px", maxWidth: "340px" }}>
+                      <div>{rt.reason}</div>
+                      <div style={{ color: "var(--pewter)", marginTop: 2 }}>{rt.notes}</div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} style={{ padding: "20px", textAlign: "center", color: "var(--ink-3)" }}>
+                    Loading sovereign model routing table...
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </EnamelSurface>
 
       {/* Collapsible Technical Details (6 Deep Technical Pillars) */}
       {showTechnicalDetails && (
