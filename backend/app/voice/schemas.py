@@ -6,9 +6,11 @@ from pydantic import BaseModel, Field
 
 
 class VoiceEngineType(str, Enum):
+    FASTER_WHISPER = "faster-whisper"
     VOSK = "vosk"
     WHISPER_CPP = "whisper.cpp"
     PIPER = "piper"
+    MMS_TTS = "mms_tts"
     PYTTSX3 = "pyttsx3"
     NONE = "none"
 

@@ -1,11 +1,11 @@
 """Sovereign Local Voice Assistant Service for FORGE.
 
 Strictly executes on-premise without ever calling Google, Apple, Microsoft, OpenAI or public cloud speech APIs.
-Provides truthful diagnostics for speech-to-text models and text-to-speech voices.
+Provides genuine local multilingual speech recognition (faster-whisper) and synthesis (Piper ONNX & Meta MMS).
 """
 
+import asyncio
 import base64
-import glob
 import importlib.util
 import io
 import logging
@@ -13,9 +13,12 @@ import os
 import shutil
 import subprocess
 import tempfile
+import threading
 import wave
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 from app.voice.schemas import (
     VoiceEngineStatus,
@@ -27,98 +30,128 @@ from app.voice.schemas import (
 logger = logging.getLogger("forge.voice.service")
 logger.setLevel(logging.INFO)
 
-# Base directory for offline models
+# Base directories for offline sovereign models
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 MODELS_DIR = BASE_DIR / "data" / "models" / "voice"
+WHISPER_DIR = MODELS_DIR / "whisper"
+PIPER_DIR = MODELS_DIR / "piper"
+MMS_DIR = MODELS_DIR / "mms_tts" / "kan"
 
 
 class SovereignVoiceService:
-    """Manages local speech-to-text (STT) and text-to-speech (TTS) engines."""
+    """Manages genuine local speech-to-text (STT) and text-to-speech (TTS) engines."""
 
     def __init__(self):
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
-        (MODELS_DIR / "vosk").mkdir(parents=True, exist_ok=True)
-        (MODELS_DIR / "piper").mkdir(parents=True, exist_ok=True)
+        WHISPER_DIR.mkdir(parents=True, exist_ok=True)
+        PIPER_DIR.mkdir(parents=True, exist_ok=True)
+        MMS_DIR.mkdir(parents=True, exist_ok=True)
 
-    def _get_vosk_model_path(self, language: str) -> Optional[Path]:
-        """Check if an offline Vosk model directory exists for the requested language."""
-        env_var = os.getenv(f"VOSK_MODEL_PATH_{language.upper()}", os.getenv("VOSK_MODEL_PATH"))
-        if env_var and os.path.isdir(env_var):
-            return Path(env_var)
+        # In-memory cached model instances
+        self._whisper_model = None
+        self._whisper_lock = threading.Lock()
 
-        # Standard directory structures
-        candidates = [
-            MODELS_DIR / "vosk" / language,
-            MODELS_DIR / "vosk" / f"vosk-model-small-{language}",
-            MODELS_DIR / "vosk" / f"vosk-model-{language}",
-        ]
-        if language == "en":
-            candidates.append(MODELS_DIR / "vosk" / "vosk-model-small-en-us-0.15")
+        self._piper_voices: Dict[str, Any] = {}
+        self._piper_lock = threading.Lock()
 
-        for c in candidates:
-            if c.is_dir() and any(c.iterdir()):
-                return c
+        self._mms_kan_model = None
+        self._mms_kan_tok = None
+        self._mms_lock = threading.Lock()
 
-        # Glob search for matching language name in directory name
-        matching = list((MODELS_DIR / "vosk").glob(f"*{language}*"))
-        for m in matching:
-            if m.is_dir() and any(m.iterdir()):
-                return m
+    # -------------------------------------------------------------------------
+    # STT Model Detection
+    # -------------------------------------------------------------------------
 
-        return None
+    def _has_faster_whisper(self) -> bool:
+        """Check if faster-whisper package is available."""
+        return importlib.util.find_spec("faster_whisper") is not None
 
-    def _get_piper_voice_path(self, language: str) -> Optional[Path]:
-        """Check if an offline Piper ONNX voice file exists for the requested language."""
-        env_var = os.getenv(f"PIPER_VOICE_PATH_{language.upper()}")
-        if env_var and os.path.isfile(env_var):
-            return Path(env_var)
-
-        candidates = [
-            MODELS_DIR / "piper" / f"{language}.onnx",
-            MODELS_DIR / "piper" / f"{language}_IN.onnx",
-            MODELS_DIR / "piper" / f"{language}_US.onnx",
-        ]
-        for c in candidates:
-            if c.is_file():
-                return c
-        return None
+    def _has_whisper_weights(self) -> bool:
+        """Check if offline Whisper weights exist in the local cache directory."""
+        if not WHISPER_DIR.is_dir():
+            return False
+        # Look for model.bin or model.safetensors in snapshots or directly
+        matches = list(WHISPER_DIR.glob("**/model.bin")) + list(WHISPER_DIR.glob("**/model.safetensors"))
+        return len(matches) > 0
 
     def _detect_stt_capabilities(self) -> Tuple[str, Dict[str, str]]:
         """Detect STT library and check per-language model directory presence."""
-        stt_engine = "none"
+        stt_models: Dict[str, str] = {
+            "en": "engine_not_installed",
+            "hi": "engine_not_installed",
+            "kn": "engine_not_installed",
+        }
+
+        # 1. Primary: faster-whisper
+        if self._has_faster_whisper():
+            if self._has_whisper_weights():
+                # Multilingual Whisper small supports en, hi, kn natively
+                for lang in ["en", "hi", "kn"]:
+                    stt_models[lang] = "ready"
+                return "faster-whisper", stt_models
+            else:
+                for lang in ["en", "hi", "kn"]:
+                    stt_models[lang] = "model_missing"
+                return "faster-whisper", stt_models
+
+        # 2. Vosk Fallback
         has_vosk = importlib.util.find_spec("vosk") is not None
-        whisper_bin = shutil.which("whisper-cli") or shutil.which("whisper")
-
         if has_vosk:
-            stt_engine = "vosk"
-        elif whisper_bin:
-            stt_engine = "whisper.cpp"
-
-        stt_models: Dict[str, str] = {}
-        for lang in ["en", "hi", "kn"]:
-            if has_vosk:
-                model_path = self._get_vosk_model_path(lang)
-                if model_path:
+            vosk_dir = MODELS_DIR / "vosk"
+            for lang in ["en", "hi", "kn"]:
+                lang_path = vosk_dir / lang
+                if lang_path.is_dir() and any(lang_path.iterdir()):
                     stt_models[lang] = "ready"
                 else:
                     stt_models[lang] = "model_missing"
-            elif whisper_bin:
-                stt_models[lang] = "ready"  # whisper.cpp supports multi-language when binary is present
-            else:
-                stt_models[lang] = "engine_not_installed"
+            return "vosk", stt_models
 
-        return stt_engine, stt_models
+        # 3. whisper.cpp Fallback
+        whisper_bin = shutil.which("whisper-cli") or shutil.which("whisper")
+        if whisper_bin:
+            for lang in ["en", "hi", "kn"]:
+                stt_models[lang] = "ready"
+            return "whisper.cpp", stt_models
+
+        return "none", stt_models
+
+    # -------------------------------------------------------------------------
+    # TTS Model Detection
+    # -------------------------------------------------------------------------
+
+    def _get_piper_voice_path(self, language: str) -> Optional[Tuple[Path, Path]]:
+        """Get (onnx_path, json_path) for Piper voice if present."""
+        if not PIPER_DIR.is_dir():
+            return None
+
+        patterns = {
+            "en": ["en_US-lessac-medium.onnx", "en*.onnx"],
+            "hi": ["hi_IN-pratham-medium.onnx", "hi*.onnx"],
+        }
+
+        lang_patterns = patterns.get(language, [f"{language}*.onnx"])
+        for pat in lang_patterns:
+            matches = list(PIPER_DIR.glob(pat))
+            for m in matches:
+                json_candidate = m.with_suffix(".onnx.json")
+                if json_candidate.is_file():
+                    return m, json_candidate
+        return None
+
+    def _has_mms_kannada_weights(self) -> bool:
+        """Check if offline Meta MMS Kannada model weights and tokenizer exist."""
+        if not MMS_DIR.is_dir():
+            return False
+        has_weights = (MMS_DIR / "model.safetensors").is_file() or (MMS_DIR / "pytorch_model.bin").is_file()
+        has_config = (MMS_DIR / "config.json").is_file()
+        has_vocab = (MMS_DIR / "vocab.json").is_file()
+        return has_weights and has_config and has_vocab
 
     def _detect_tts_capabilities(self) -> Tuple[str, Dict[str, str], List[Dict[str, Any]]]:
-        """Detect local TTS engines and query host system voices per language."""
-        tts_engine = "none"
-        has_piper = importlib.util.find_spec("piper") is not None or shutil.which("piper") is not None
+        """Detect local TTS engines and query local voice availability per language."""
+        has_piper_pkg = importlib.util.find_spec("piper") is not None
+        has_transformers = importlib.util.find_spec("transformers") is not None
         has_pyttsx3 = importlib.util.find_spec("pyttsx3") is not None
-
-        if has_piper:
-            tts_engine = "piper"
-        elif has_pyttsx3:
-            tts_engine = "pyttsx3"
 
         tts_voices: Dict[str, str] = {
             "en": "engine_not_installed",
@@ -127,50 +160,83 @@ class SovereignVoiceService:
         }
         voices_details: List[Dict[str, Any]] = []
 
+        active_engines = []
+
+        # 1. English Piper Voice
+        if has_piper_pkg:
+            piper_en = self._get_piper_voice_path("en")
+            if piper_en:
+                tts_voices["en"] = "ready"
+                voices_details.append({
+                    "id": str(piper_en[0]),
+                    "name": f"Piper English ({piper_en[0].name})",
+                    "languages": ["en-US"],
+                    "engine": "piper",
+                })
+                active_engines.append("piper")
+            else:
+                tts_voices["en"] = "voice_missing"
+        elif has_pyttsx3:
+            tts_voices["en"] = "ready"  # fallback to SAPI5 David
+            active_engines.append("pyttsx3")
+
+        # 2. Hindi Piper Voice
+        if has_piper_pkg:
+            piper_hi = self._get_piper_voice_path("hi")
+            if piper_hi:
+                tts_voices["hi"] = "ready"
+                voices_details.append({
+                    "id": str(piper_hi[0]),
+                    "name": f"Piper Hindi ({piper_hi[0].name})",
+                    "languages": ["hi-IN"],
+                    "engine": "piper",
+                })
+                if "piper" not in active_engines:
+                    active_engines.append("piper")
+            else:
+                tts_voices["hi"] = "voice_missing"
+
+        # 3. Kannada Meta MMS Voice
+        if has_transformers:
+            if self._has_mms_kannada_weights():
+                tts_voices["kn"] = "ready"
+                voices_details.append({
+                    "id": str(MMS_DIR),
+                    "name": "Meta MMS Kannada VITS (facebook/mms-tts-kan)",
+                    "languages": ["kn-IN"],
+                    "engine": "mms_tts",
+                })
+                active_engines.append("mms_tts")
+            else:
+                tts_voices["kn"] = "voice_missing"
+
+        # 4. Host SAPI5 Voices for reference/fallback
         if has_pyttsx3:
             try:
                 import pyttsx3
-                engine = pyttsx3.init()
-                raw_voices = engine.getProperty("voices") or []
-                for v in raw_voices:
-                    voices_details.append({
-                        "id": getattr(v, "id", ""),
-                        "name": getattr(v, "name", "Unknown Voice"),
-                        "languages": getattr(v, "languages", []),
-                    })
+                sapi = pyttsx3.init()
+                for v in sapi.getProperty("voices") or []:
+                    v_name = getattr(v, "name", "")
+                    if "david" in v_name.lower() or "zira" in v_name.lower():
+                        voices_details.append({
+                            "id": getattr(v, "id", ""),
+                            "name": v_name,
+                            "languages": ["en-US"],
+                            "engine": "pyttsx3",
+                        })
+                del sapi
+            except Exception:
+                pass
 
-                # Check English
-                en_match = any("en" in str(v.get("languages", "")).lower() or "david" in v.get("name", "").lower() or "zira" in v.get("name", "").lower() for v in voices_details)
-                tts_voices["en"] = "ready" if en_match else "voice_missing"
-
-                # Check Hindi
-                hi_match = any("hi" in str(v.get("languages", "")).lower() or "kalpana" in v.get("name", "").lower() or "hindi" in v.get("name", "").lower() for v in voices_details)
-                tts_voices["hi"] = "ready" if hi_match else "voice_missing"
-
-                # Check Kannada
-                kn_match = any("kn" in str(v.get("languages", "")).lower() or "kannada" in v.get("name", "").lower() for v in voices_details)
-                tts_voices["kn"] = "ready" if kn_match else "voice_missing"
-
-                del engine
-            except Exception as e:
-                logger.warning(f"pyttsx3 voice interrogation failed: {e}")
-                tts_voices["en"] = "engine_error"
-                tts_voices["hi"] = "engine_error"
-                tts_voices["kn"] = "engine_error"
-
-        elif has_piper:
-            for lang in ["en", "hi", "kn"]:
-                piper_path = self._get_piper_voice_path(lang)
-                if piper_path:
-                    tts_voices[lang] = "ready"
-                    voices_details.append({"name": f"Piper {lang.upper()} ({piper_path.name})", "id": str(piper_path), "languages": [lang]})
-                else:
-                    tts_voices[lang] = "voice_missing"
-
+        tts_engine = " + ".join(active_engines) if active_engines else ("pyttsx3" if has_pyttsx3 else "none")
         return tts_engine, tts_voices, voices_details
 
+    # -------------------------------------------------------------------------
+    # Public Status API
+    # -------------------------------------------------------------------------
+
     def get_status(self) -> VoiceEngineStatus:
-        """Inspect and report the live availability of local sovereign speech engines and models."""
+        """Inspect and report the truthful live availability of local sovereign speech engines."""
         stt_engine, stt_models = self._detect_stt_capabilities()
         tts_engine, tts_voices, voices_details = self._detect_tts_capabilities()
 
@@ -178,7 +244,8 @@ class SovereignVoiceService:
         tts_available = any(v == "ready" for v in tts_voices.values())
 
         legacy_installed_models = {
-            lang: "ready" if (stt_models.get(lang) == "ready" or tts_voices.get(lang) == "ready") else "not_installed"
+            lang: "ready" if (stt_models.get(lang) == "ready" and tts_voices.get(lang) == "ready")
+            else ("partial" if (stt_models.get(lang) == "ready" or tts_voices.get(lang) == "ready") else "not_installed")
             for lang in ["en", "hi", "kn"]
         }
 
@@ -198,12 +265,61 @@ class SovereignVoiceService:
                 "Zero third-party cloud speech APIs, zero telemetry egress."
             ),
             setup_instructions={
-                "stt_vosk": "pip install vosk && download offline models from alphacephei.com/vosk/models into data/models/voice/vosk/{lang}",
-                "stt_whisper": "Install whisper-cli binary locally and configure WHISPER_CPP_PATH.",
-                "tts_pyttsx3": "Uses Windows SAPI5 offline voices (Windows Settings > Time & Language > Speech > Add Voices for Hindi).",
-                "tts_piper": "pip install piper-tts && place ONNX voice models in data/models/voice/piper/{lang}.onnx",
+                "stt_faster_whisper": "Multilingual Whisper small model in data/models/voice/whisper (supports EN, HI, KN).",
+                "tts_piper": "Piper ONNX voice models in data/models/voice/piper (en_US-lessac, hi_IN-pratham).",
+                "tts_mms_kannada": "Meta MMS VITS offline Kannada model in data/models/voice/mms_tts/kan.",
+                "tts_pyttsx3": "Windows SAPI5 host voices for offline English playback fallback.",
             },
         )
+
+    # -------------------------------------------------------------------------
+    # Model Loading Helpers
+    # -------------------------------------------------------------------------
+
+    def _get_or_load_whisper(self):
+        """Lazy-load and cache the faster-whisper model."""
+        if self._whisper_model is None:
+            with self._whisper_lock:
+                if self._whisper_model is None:
+                    from faster_whisper import WhisperModel
+                    logger.info("Loading faster-whisper small model from local cache...")
+                    self._whisper_model = WhisperModel(
+                        "small",
+                        device="cpu",
+                        compute_type="int8",
+                        download_root=str(WHISPER_DIR),
+                        local_files_only=True,
+                    )
+        return self._whisper_model
+
+    def _get_or_load_piper_voice(self, language: str):
+        """Lazy-load and cache a Piper voice instance."""
+        if language not in self._piper_voices:
+            with self._piper_lock:
+                if language not in self._piper_voices:
+                    from piper import PiperVoice
+                    paths = self._get_piper_voice_path(language)
+                    if not paths:
+                        raise FileNotFoundError(f"Piper voice files for '{language}' not found in {PIPER_DIR}")
+                    onnx_path, json_path = paths
+                    logger.info(f"Loading Piper voice for '{language}' from {onnx_path.name}...")
+                    self._piper_voices[language] = PiperVoice.load(str(onnx_path), str(json_path))
+        return self._piper_voices[language]
+
+    def _get_or_load_mms_kannada(self):
+        """Lazy-load and cache Meta MMS Kannada VITS model and tokenizer."""
+        if self._mms_kan_model is None or self._mms_kan_tok is None:
+            with self._mms_lock:
+                if self._mms_kan_model is None:
+                    from transformers import VitsModel, AutoTokenizer
+                    logger.info(f"Loading Meta MMS Kannada model from {MMS_DIR}...")
+                    self._mms_kan_model = VitsModel.from_pretrained(str(MMS_DIR), local_files_only=True)
+                    self._mms_kan_tok = AutoTokenizer.from_pretrained(str(MMS_DIR), local_files_only=True)
+        return self._mms_kan_model, self._mms_kan_tok
+
+    # -------------------------------------------------------------------------
+    # Speech-to-Text (Transcription)
+    # -------------------------------------------------------------------------
 
     async def transcribe_audio(
         self,
@@ -213,8 +329,8 @@ class SovereignVoiceService:
     ) -> VoiceTranscribeResponse:
         """Transcribe uploaded audio bytes locally.
 
-        Strictly rejects external cloud fallback. If no local engine or model is installed,
-        reports ENGINE_UNAVAILABLE with honest local setup guidance.
+        Accepts standard 16-bit PCM WAV audio from frontend microphone capture.
+        Strictly executes on-premise without cloud transmission.
         """
         stt_engine, stt_models = self._detect_stt_capabilities()
 
@@ -236,85 +352,107 @@ class SovereignVoiceService:
                 error_message="Audio input is empty or below detectable threshold.",
             )
 
-        # Check model readiness for requested language
         model_status = stt_models.get(language, "engine_not_installed")
         if model_status != "ready":
-            if stt_engine == "vosk":
-                target_dir = f"data/models/voice/vosk/{language}"
+            return VoiceTranscribeResponse(
+                status="ENGINE_UNAVAILABLE",
+                text="",
+                language=language,
+                engine=stt_engine,
+                error_message=(
+                    f"Local speech-to-text model for '{language}' is not ready ({model_status}). "
+                    "In adherence to FORGE Sovereignty Principles, cloud speech APIs are strictly prohibited."
+                ),
+                sovereign_verified=True,
+            )
+
+        # 1. Primary: faster-whisper transcription
+        if stt_engine == "faster-whisper":
+            try:
+                def _do_transcribe():
+                    model = self._get_or_load_whisper()
+                    bio = io.BytesIO(audio_bytes)
+                    segments, info = model.transcribe(
+                        bio,
+                        language=language if language in ["en", "hi", "kn"] else None,
+                        beam_size=5,
+                        vad_filter=True,
+                    )
+                    transcription = " ".join(s.text for s in segments).strip()
+                    avg_prob = getattr(info, "language_probability", 0.95) if info else 0.9
+                    return transcription, avg_prob
+
+                transcribed_text, confidence = await asyncio.to_thread(_do_transcribe)
+
+                if not transcribed_text:
+                    return VoiceTranscribeResponse(
+                        status="EMPTY_AUDIO",
+                        text="",
+                        language=language,
+                        confidence=confidence,
+                        engine="faster-whisper",
+                        error_message="No discernible speech detected in the audio sample (silence).",
+                        sovereign_verified=True,
+                    )
+
                 return VoiceTranscribeResponse(
-                    status="ENGINE_UNAVAILABLE",
-                    text="",
+                    status="SUCCESS",
+                    text=transcribed_text,
                     language=language,
-                    engine="vosk",
-                    error_message=(
-                        f"Vosk package is present, but local language model directory '{target_dir}' was not found. "
-                        f"Download a sovereign model (e.g. vosk-model-small-{language}) into '{target_dir}', or use the text console."
-                    ),
+                    confidence=confidence,
+                    engine="faster-whisper",
                     sovereign_verified=True,
                 )
-            else:
+            except Exception as exc:
+                logger.error(f"faster-whisper transcription error: {exc}", exc_info=True)
                 return VoiceTranscribeResponse(
-                    status="ENGINE_UNAVAILABLE",
-                    text="",
+                    status="ERROR",
                     language=language,
-                    engine="none",
-                    error_message=(
-                        "Local speech-to-text engine (Vosk or whisper.cpp) is not installed on this host. "
-                        "In adherence to FORGE Sovereignty Principles, cloud speech APIs (Google/Apple/OpenAI) "
-                        "are strictly prohibited. Please install a local engine or use the text console."
-                    ),
+                    engine="faster-whisper",
+                    error_message=f"Local speech recognition failed: {str(exc)}",
                     sovereign_verified=True,
                 )
 
-        # 1. Vosk Processing
+        # 2. Vosk Fallback
         if stt_engine == "vosk":
             try:
                 import json
                 import vosk
 
-                model_path = self._get_vosk_model_path(language)
-                if not model_path:
+                vosk_path = MODELS_DIR / "vosk" / language
+                if not vosk_path.is_dir():
                     return VoiceTranscribeResponse(
                         status="ENGINE_UNAVAILABLE",
                         language=language,
                         engine="vosk",
-                        error_message=f"Vosk model for '{language}' not found in {MODELS_DIR / 'vosk'}.",
+                        error_message=f"Vosk model for '{language}' not found in {vosk_path}.",
                     )
 
-                # Validate WAV header
-                try:
+                def _do_vosk():
                     wf = wave.open(io.BytesIO(audio_bytes), "rb")
-                except Exception as w_err:
-                    return VoiceTranscribeResponse(
-                        status="ERROR",
-                        language=language,
-                        engine="vosk",
-                        error_message=f"Input audio must be PCM WAV format: {w_err}",
-                    )
+                    model = vosk.Model(str(vosk_path))
+                    rec = vosk.KaldiRecognizer(model, wf.getframerate())
+                    text_parts = []
+                    while True:
+                        data = wf.readframes(4000)
+                        if len(data) == 0:
+                            break
+                        if rec.AcceptWaveform(data):
+                            res = json.loads(rec.Result())
+                            if res.get("text"):
+                                text_parts.append(res["text"])
+                    final_res = json.loads(rec.FinalResult())
+                    if final_res.get("text"):
+                        text_parts.append(final_res["text"])
+                    return " ".join(text_parts).strip()
 
-                model = vosk.Model(str(model_path))
-                rec = vosk.KaldiRecognizer(model, wf.getframerate())
-                text_parts = []
-                while True:
-                    data = wf.readframes(4000)
-                    if len(data) == 0:
-                        break
-                    if rec.AcceptWaveform(data):
-                        res = json.loads(rec.Result())
-                        if res.get("text"):
-                            text_parts.append(res["text"])
-
-                final_res = json.loads(rec.FinalResult())
-                if final_res.get("text"):
-                    text_parts.append(final_res["text"])
-
-                full_text = " ".join(text_parts).strip()
+                text = await asyncio.to_thread(_do_vosk)
                 return VoiceTranscribeResponse(
-                    status="SUCCESS",
-                    text=full_text,
+                    status="SUCCESS" if text else "EMPTY_AUDIO",
+                    text=text,
                     language=language,
-                    confidence=0.92,
                     engine="vosk",
+                    confidence=0.85,
                     sovereign_verified=True,
                 )
             except Exception as exc:
@@ -322,42 +460,7 @@ class SovereignVoiceService:
                     status="ERROR",
                     language=language,
                     engine="vosk",
-                    error_message=f"Vosk decoding error: {str(exc)}",
-                )
-
-        # 2. whisper.cpp Processing
-        if stt_engine == "whisper.cpp":
-            try:
-                whisper_bin = shutil.which("whisper-cli") or shutil.which("whisper")
-                if whisper_bin:
-                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
-                        tf.write(audio_bytes)
-                        tf_path = tf.name
-                    try:
-                        res = subprocess.run(
-                            [whisper_bin, "-f", tf_path, "-l", language, "--output-txt"],
-                            capture_output=True,
-                            text=True,
-                            timeout=30,
-                        )
-                        transcribed = res.stdout.strip()
-                        return VoiceTranscribeResponse(
-                            status="SUCCESS",
-                            text=transcribed,
-                            language=language,
-                            confidence=0.94,
-                            engine="whisper.cpp",
-                            sovereign_verified=True,
-                        )
-                    finally:
-                        if os.path.exists(tf_path):
-                            os.remove(tf_path)
-            except Exception as exc:
-                return VoiceTranscribeResponse(
-                    status="ERROR",
-                    language=language,
-                    engine="whisper.cpp",
-                    error_message=f"whisper.cpp execution failed: {str(exc)}",
+                    error_message=f"Vosk processing error: {str(exc)}",
                 )
 
         return VoiceTranscribeResponse(
@@ -368,168 +471,146 @@ class SovereignVoiceService:
             error_message="Configured local STT engine could not process the provided audio.",
         )
 
+    # -------------------------------------------------------------------------
+    # Text-to-Speech (Synthesis)
+    # -------------------------------------------------------------------------
+
     async def synthesize_speech(
         self,
         request: VoiceSynthesizeRequest,
     ) -> VoiceSynthesizeResponse:
         """Synthesize text into speech audio strictly on-premise."""
-        tts_engine, tts_voices, voices_details = self._detect_tts_capabilities()
+        _, tts_voices, _ = self._detect_tts_capabilities()
 
-        if tts_engine == "none":
-            return VoiceSynthesizeResponse(
-                status="ENGINE_UNAVAILABLE",
-                audio_format="wav",
-                engine="none",
-                language=request.language,
-                error_message=(
-                    "Local text-to-speech engine (Piper or pyttsx3) is not installed on this host. "
-                    "In adherence to FORGE Sovereignty Principles, cloud TTS services are strictly prohibited."
-                ),
-            )
-
-        # Verify language support for current TTS engine
         lang_status = tts_voices.get(request.language, "voice_missing")
         if lang_status != "ready":
             lang_label = {"en": "English", "hi": "Hindi", "kn": "Kannada"}.get(request.language, request.language)
             return VoiceSynthesizeResponse(
                 status="VOICE_UNAVAILABLE",
                 audio_format="wav",
-                engine=tts_engine,
+                engine="none",
                 language=request.language,
                 error_message=(
-                    f"Local text-to-speech voice for {lang_label} ({request.language}) is not installed on this host. "
-                    f"Windows Settings > Time & Language > Speech > Add Voices for {lang_label}, or install Piper ONNX voice."
+                    f"Local text-to-speech voice for {lang_label} ({request.language}) is not ready ({lang_status}). "
+                    f"Follow docs/VOICE_SETUP.md to verify offline voice files."
                 ),
             )
 
-        # 1. pyttsx3 Synthesis
-        if tts_engine == "pyttsx3":
+        # 1. Kannada Synthesis: Meta MMS VITS
+        if request.language == "kn":
             try:
-                import pyttsx3
+                def _do_mms_kannada():
+                    import torch
+                    model, tok = self._get_or_load_mms_kannada()
+                    inputs = tok(request.text, return_tensors="pt")
+                    with torch.no_grad():
+                        out = model(**inputs).waveform
+                    audio_arr = out.squeeze().cpu().numpy()
+                    audio_int16 = (audio_arr * 32767).clip(-32768, 32767).astype(np.int16)
 
-                engine = pyttsx3.init()
-                raw_voices = engine.getProperty("voices") or []
+                    buf = io.BytesIO()
+                    with wave.open(buf, "wb") as wf:
+                        wf.setnchannels(1)
+                        wf.setsampwidth(2)
+                        wf.setframerate(model.config.sampling_rate)
+                        wf.writeframes(audio_int16.tobytes())
+                    return buf.getvalue()
 
-                # Select best voice for target language
-                selected_voice_id = None
-                selected_voice_name = None
-                for v in raw_voices:
-                    v_id = getattr(v, "id", "")
-                    v_name = getattr(v, "name", "")
-                    v_langs = [str(l).lower() for l in getattr(v, "languages", [])]
+                wav_bytes = await asyncio.to_thread(_do_mms_kannada)
+                b64 = base64.b64encode(wav_bytes).decode("utf-8")
+                return VoiceSynthesizeResponse(
+                    status="SUCCESS",
+                    audio_format="wav",
+                    audio_base64=b64,
+                    engine="mms_tts",
+                    language="kn",
+                    voice_name="Meta MMS Kannada (facebook/mms-tts-kan)",
+                )
+            except Exception as exc:
+                logger.error(f"Meta MMS Kannada synthesis error: {exc}", exc_info=True)
+                return VoiceSynthesizeResponse(
+                    status="ERROR",
+                    engine="mms_tts",
+                    language="kn",
+                    error_message=f"MMS Kannada synthesis error: {str(exc)}",
+                )
 
-                    if request.language == "hi" and ("hi" in v_langs or "kalpana" in v_name.lower() or "hindi" in v_name.lower()):
-                        selected_voice_id = v_id
-                        selected_voice_name = v_name
-                        break
-                    elif request.language == "kn" and ("kn" in v_langs or "kannada" in v_name.lower()):
-                        selected_voice_id = v_id
-                        selected_voice_name = v_name
-                        break
-                    elif request.language == "en" and ("en" in v_langs or "david" in v_name.lower() or "zira" in v_name.lower()):
-                        selected_voice_id = v_id
-                        selected_voice_name = v_name
-                        break
-
-                if selected_voice_id:
-                    engine.setProperty("voice", selected_voice_id)
-
-                # Set rate (default normal rate is ~175-200)
-                base_rate = engine.getProperty("rate") or 180
-                engine.setProperty("rate", int(base_rate * request.voice_speed))
-
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
-                    temp_wav = tf.name
-
+        # 2. English & Hindi Synthesis: Piper ONNX
+        if request.language in ["en", "hi"]:
+            piper_paths = self._get_piper_voice_path(request.language)
+            if piper_paths:
                 try:
-                    engine.save_to_file(request.text, temp_wav)
-                    engine.runAndWait()
+                    def _do_piper():
+                        voice = self._get_or_load_piper_voice(request.language)
+                        buf = io.BytesIO()
+                        with wave.open(buf, "wb") as wf:
+                            voice.synthesize_wav(request.text, wf)
+                        return buf.getvalue()
 
-                    if not os.path.exists(temp_wav) or os.path.getsize(temp_wav) == 0:
-                        raise RuntimeError("TTS engine produced an empty audio file.")
-
-                    with open(temp_wav, "rb") as f:
-                        wav_data = f.read()
-
-                    b64 = base64.b64encode(wav_data).decode("utf-8")
+                    wav_bytes = await asyncio.to_thread(_do_piper)
+                    b64 = base64.b64encode(wav_bytes).decode("utf-8")
+                    voice_label = "Piper English (en_US-lessac)" if request.language == "en" else "Piper Hindi (hi_IN-pratham)"
                     return VoiceSynthesizeResponse(
                         status="SUCCESS",
                         audio_format="wav",
                         audio_base64=b64,
-                        engine="pyttsx3",
+                        engine="piper",
                         language=request.language,
-                        voice_name=selected_voice_name or "Default Host Voice",
+                        voice_name=voice_label,
                     )
-                finally:
-                    if os.path.exists(temp_wav):
-                        try:
+                except Exception as exc:
+                    logger.error(f"Piper synthesis error for {request.language}: {exc}", exc_info=True)
+                    # If English fails on Piper, fall back to pyttsx3
+                    if request.language != "en":
+                        return VoiceSynthesizeResponse(
+                            status="ERROR",
+                            engine="piper",
+                            language=request.language,
+                            error_message=f"Piper synthesis error: {str(exc)}",
+                        )
+
+        # 3. Fallback for English: Windows SAPI5 pyttsx3
+        if request.language == "en":
+            try:
+                def _do_pyttsx3():
+                    import pyttsx3
+                    engine = pyttsx3.init()
+                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
+                        temp_wav = tf.name
+                    try:
+                        engine.save_to_file(request.text, temp_wav)
+                        engine.runAndWait()
+                        with open(temp_wav, "rb") as f:
+                            data = f.read()
+                        return data
+                    finally:
+                        if os.path.exists(temp_wav):
                             os.remove(temp_wav)
-                        except Exception:
-                            pass
-                    del engine
+                        del engine
+
+                wav_bytes = await asyncio.to_thread(_do_pyttsx3)
+                b64 = base64.b64encode(wav_bytes).decode("utf-8")
+                return VoiceSynthesizeResponse(
+                    status="SUCCESS",
+                    audio_format="wav",
+                    audio_base64=b64,
+                    engine="pyttsx3",
+                    language="en",
+                    voice_name="Microsoft David Desktop (SAPI5)",
+                )
             except Exception as exc:
                 return VoiceSynthesizeResponse(
                     status="ERROR",
                     engine="pyttsx3",
-                    language=request.language,
-                    error_message=f"pyttsx3 synthesis error: {str(exc)}",
-                )
-
-        # 2. Piper Synthesis
-        if tts_engine == "piper":
-            try:
-                piper_path = self._get_piper_voice_path(request.language)
-                if not piper_path:
-                    return VoiceSynthesizeResponse(
-                        status="VOICE_UNAVAILABLE",
-                        engine="piper",
-                        language=request.language,
-                        error_message=f"Piper ONNX voice file for '{request.language}' not found in {MODELS_DIR / 'piper'}.",
-                    )
-
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
-                    temp_wav = tf.name
-
-                piper_bin = shutil.which("piper") or "piper"
-                try:
-                    process = subprocess.run(
-                        [piper_bin, "--model", str(piper_path), "--output_file", temp_wav],
-                        input=request.text,
-                        text=True,
-                        capture_output=True,
-                        timeout=15,
-                    )
-                    if process.returncode != 0:
-                        raise RuntimeError(process.stderr.strip() or "Piper execution failed")
-
-                    with open(temp_wav, "rb") as f:
-                        wav_data = f.read()
-
-                    b64 = base64.b64encode(wav_data).decode("utf-8")
-                    return VoiceSynthesizeResponse(
-                        status="SUCCESS",
-                        audio_format="wav",
-                        audio_base64=b64,
-                        engine="piper",
-                        language=request.language,
-                        voice_name=piper_path.name,
-                    )
-                finally:
-                    if os.path.exists(temp_wav):
-                        os.remove(temp_wav)
-            except Exception as exc:
-                return VoiceSynthesizeResponse(
-                    status="ERROR",
-                    engine="piper",
-                    language=request.language,
-                    error_message=f"Piper synthesis error: {str(exc)}",
+                    language="en",
+                    error_message=f"Host TTS fallback failed: {str(exc)}",
                 )
 
         return VoiceSynthesizeResponse(
             status="ENGINE_UNAVAILABLE",
-            engine=tts_engine,
+            engine="none",
             language=request.language,
-            error_message="Configured local TTS engine is not ready.",
+            error_message="No suitable sovereign speech engine available for this language.",
         )
 
 

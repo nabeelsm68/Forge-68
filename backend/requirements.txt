@@ -8,3 +8,9 @@ numpy>=2.0.0
 pytest>=8.3.0
 pytest-asyncio>=0.24.0
 python-multipart>=0.0.18
+faster-whisper>=1.0.0
+av<14
+piper-tts>=1.8.0
+pyttsx3>=2.98
+transformers>=4.40.0
+torch>=2.2.0

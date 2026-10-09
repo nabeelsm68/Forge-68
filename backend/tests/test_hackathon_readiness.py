@@ -283,6 +283,42 @@ def test_voice_synthesize_graceful_local_response(client):
         assert "not installed" in data.get("error_message", "").lower() or "engine" in data.get("error_message", "").lower()
 
 
+def test_voice_status_multilingual_models(client):
+    """Verify that voice status reports active sovereign engines and models."""
+    res = client.get("/api/v1/voice/status")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["stt_available"] is True
+    assert data["tts_available"] is True
+    assert data["stt_engine"] == "faster-whisper"
+    assert data["stt_models"]["en"] == "ready"
+    assert data["stt_models"]["hi"] == "ready"
+    assert data["stt_models"]["kn"] == "ready"
+    assert data["tts_voices"]["en"] == "ready"
+    assert data["tts_voices"]["hi"] == "ready"
+    assert data["tts_voices"]["kn"] == "ready"
+
+
+def test_voice_synthesize_multilingual_local(client):
+    """Verify local neural synthesis for English, Hindi, and Kannada."""
+    # Hindi synthesis
+    res_hi = client.post("/api/v1/voice/synthesize", json={"text": "दबाव स्तर सामान्य है।", "language": "hi"})
+    assert res_hi.status_code == 200
+    data_hi = res_hi.json()
+    assert data_hi["status"] == "SUCCESS"
+    assert len(data_hi["audio_base64"]) > 0
+    assert data_hi["language"] == "hi"
+
+    # Kannada synthesis
+    res_kn = client.post("/api/v1/voice/synthesize", json={"text": "ಪರೀಕ್ಷಾ ವರದಿ ಪರಿಶೀಲಿಸಿ", "language": "kn"})
+    assert res_kn.status_code == 200
+    data_kn = res_kn.json()
+    assert data_kn["status"] == "SUCCESS"
+    assert len(data_kn["audio_base64"]) > 0
+    assert data_kn["language"] == "kn"
+
+
+
 # =========================================================================
 # Conversational Isolation & Demo Run Isolation
 # =========================================================================
