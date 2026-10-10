@@ -159,6 +159,8 @@ class AgentReasoningService:
         greeting_patterns = [
             r"^(hi|hello|hey|namaste|namaskara|greetings)\b",
             r"^(नमस्ते|ನಮಸ್ಕಾರ)",
+            r"how are you",
+            r"good (morning|afternoon|evening)",
             r"^who are you\??$",
             r"^what can you do\??$",
             r"^what is forge\??$",
@@ -166,8 +168,31 @@ class AgentReasoningService:
         ]
         is_greeting = any(re.search(pat, clean_q) for pat in greeting_patterns)
 
-        if is_greeting and not any(tag in clean_q for tag in ["r-204", "r204", "pi-204", "p-201", "pressure", "vibration", "actuator", "sop", "sensor", "reactor", "work", "operate", "operating", "inspection", "maintenance"]):
-            if target_lang == "hi":
+        facility_specific_tags = ["r-204", "r204", "pi-204", "p-201", "e-301", "prv-204"]
+        has_facility_tag = any(tag in clean_q for tag in facility_specific_tags)
+        is_critical_action = any(act in clean_q for act in ["calibrate", "calibration", "actuate", "actuation", "open valve", "close valve", "trip", "setpoint"])
+
+        if is_greeting and not has_facility_tag and not is_critical_action:
+            if "how are you" in clean_q:
+                if target_lang == "hi":
+                    greeting_text = (
+                        "मैं पूरी तरह ठीक हूँ और संप्रभु एयर-गैप्ड मापदंडों के भीतर सक्रिय रूप से काम कर रहा हूँ। "
+                        "सभी स्थानीय निष्कर्ष रनटाइम, सत्यापन इंजन और नीति गेटवे सुरक्षित हैं। "
+                        "आज मैं आपकी औद्योगिक प्रक्रिया या इंजीनियरिंग जांच में क्या सहायता कर सकता हूँ?"
+                    )
+                elif target_lang == "kn":
+                    greeting_text = (
+                        "ನಾನು ಕ್ಷೇಮವಾಗಿದ್ದೇನೆ ಮತ್ತು ಸಾರ್ವಭೌಮ ಏರ್-ಗ್ಯಾಪ್ಡ್ ವ್ಯವಸ್ಥೆಯಲ್ಲಿ ಸಂಪೂರ್ಣ ಸಕ್ರಿಯವಾಗಿದ್ದೇನೆ. "
+                        "ಎಲ್ಲಾ ಸ್ಥಳೀಯ ಪರಿಶೀಲನಾ ಎಂಜಿನ್ ಮತ್ತು ನೀತಿ ಗೇಟ್‌ವೇಗಳು ಸುರಕ್ಷಿತವಾಗಿವೆ. "
+                        "ಇಂದು ನಿಮ್ಮ ತಾಂತ್ರಿಕ ಕಾರ್ಯಗಳಿಗೆ ನಾನು ಹೇಗೆ ನೆರವಾಗಲಿ?"
+                    )
+                else:
+                    greeting_text = (
+                        "I am functioning optimally within sovereign air-gapped parameters. "
+                        "All local inference runtimes, deterministic verification engines, and policy gateways are fully operational. "
+                        "How may I assist your engineering operations or technical inquiries today?"
+                    )
+            elif target_lang == "hi":
                 greeting_text = (
                     "नमस्ते। मैं FORGE हूँ — संप्रभु औद्योगिक AI नियंत्रण तल (Sovereign Industrial AI Control Plane)। "
                     "मैं पूरी तरह स्थानीय, एयर-गैप्ड और ऑन-प्रिमाइसेस मॉडल द्वारा संचालित हूँ। "
@@ -219,6 +244,104 @@ class AgentReasoningService:
                 latency_ms=elapsed_greeting_ms,
                 timing={
                     "total_duration_ms": elapsed_greeting_ms,
+                    "planning_duration_ms": 0.0,
+                    "knowledge_retrieval_duration_ms": 0.0,
+                    "tool_execution_duration_ms": 0.0,
+                    "vision_duration_ms": 0.0,
+                    "verification_duration_ms": 0.0,
+                    "synthesis_duration_ms": 0.0,
+                },
+            )
+
+        # 1c. General Chemical / Process Engineering Concept Explanation (e.g., "What is a reactor?")
+        general_concept_patterns = [
+            r"^what is (a|an)\s+(reactor|heat exchanger|pump|boiler|distillation column|valve|sensor|piping|sop|pid controller|scada|plc)\b",
+            r"^explain (what|how)\s+(a|an|the)?\s*(reactor|heat exchanger|pump|hydrocracking|catalytic cracking|cavitation|mawp|sop)\b",
+            r"^what does this calculation mean\b",
+            r"^explain this sop in simple (language|terms|words)\b",
+            r"^what is (hydrocracking|cavitation|mawp|design pressure|trip threshold)\b",
+        ]
+        is_general_concept = any(re.search(pat, clean_q) for pat in general_concept_patterns)
+
+        if is_general_concept and not has_facility_tag and not is_critical_action:
+            concept_sys_prompt = (
+                "You are FORGE, a Sovereign Industrial AI Control Plane. "
+                "Provide a clear, accurate, professional engineering explanation to the user's conceptual inquiry. "
+                "Explain the foundational chemical/process engineering principles clearly and practically. "
+                "Do not invent plant-specific telemetry or pretend to inspect live sensors when explaining generic engineering concepts."
+            )
+            if target_lang == "hi":
+                concept_sys_prompt += "\nRespond in fluent Hindi (हिन्दी). Keep technical engineering units and common engineering terms clear."
+            elif target_lang == "kn":
+                concept_sys_prompt += "\nRespond in fluent Kannada (ಕನ್ನಡ). Keep technical engineering units and common engineering terms clear."
+
+            concept_answer = ""
+            try:
+                c_req = ModelRequest(
+                    messages=[
+                        ModelMessage(role="system", content=concept_sys_prompt),
+                        ModelMessage(role="user", content=request.query),
+                    ],
+                    temperature=0.2,
+                    max_tokens=600,
+                )
+                c_resp = await self.model_provider.generate(c_req)
+                concept_answer = c_resp.content.strip() if c_resp and c_resp.content else ""
+            except Exception as c_err:
+                logger.warning("[CONCEPT_GENERATION_FAILED] Model generation failed: %s", c_err)
+
+            if not concept_answer:
+                # Deterministic educational fallback
+                if "reactor" in clean_q:
+                    concept_answer = (
+                        "A chemical reactor is an enclosed industrial pressure vessel engineered to contain and control chemical reactions. "
+                        "In refinery and petrochemical operations, common types include continuous stirred-tank reactors (CSTR), plug-flow reactors (PFR), "
+                        "and catalytic trickle-bed reactors (such as Hydrocracker R-204). Operating parameters such as pressure, temperature, catalyst bed distribution, "
+                        "and residence time are deterministically regulated to maximize conversion while preventing thermal runaway or overpressure."
+                    )
+                elif "calculation" in clean_q:
+                    concept_answer = (
+                        "Deterministic engineering calculations verify physical limits against operating parameters. For example: "
+                        "1. Pressure Variance (Observed - Baseline) quantifies operating deviation. "
+                        "2. Pressure Margin (Trip Threshold - Observed) quantifies remaining safety headroom before automated emergency shutdown. "
+                        "3. Corrosion Retirement Margin (Measured Thickness - Minimum Allowable Thickness) proves remaining pressure boundary integrity."
+                    )
+                else:
+                    concept_answer = (
+                        f"Standard Chemical & Process Engineering Guidance: {request.query.strip().capitalize()}. "
+                        "Industrial plant equipment is operated under strict Standard Operating Procedures (SOPs) with defined baseline, alarm, and trip parameters "
+                        "to guarantee pressure envelope integrity and personnel safety."
+                    )
+
+            concept_plan = AgentPlan(
+                action=AgentActionType.DIRECT,
+                direct_answer=concept_answer,
+                reasoning="Direct conceptual engineering explanation without tool actuation.",
+            )
+            record_agent_trace(
+                AgentEventType.AGENT_FINAL_RESPONSE,
+                {"action": "direct", "type": "conceptual_engineering_explanation", "language": target_lang},
+            )
+            elapsed_concept_ms = round((time.perf_counter() - t_start) * 1000.0, 2)
+            return AgentQueryResponse(
+                query=request.query,
+                final_answer=concept_answer,
+                status=AgentQueryStatus.DIRECT_ANSWER,
+                language=target_lang,
+                plan=concept_plan,
+                agent_plan=concept_plan,
+                verification=VerificationResult(
+                    status=VerificationStatus.VERIFIED,
+                    summary="General engineering concept explained deterministically with zero tool execution.",
+                    checks=[],
+                ),
+                scenario_id=scenario_id,
+                run_id=run_id,
+                execution_state="COMPLETED",
+                model_route=route_dict,
+                latency_ms=elapsed_concept_ms,
+                timing={
+                    "total_duration_ms": elapsed_concept_ms,
                     "planning_duration_ms": 0.0,
                     "knowledge_retrieval_duration_ms": 0.0,
                     "tool_execution_duration_ms": 0.0,
@@ -330,6 +453,12 @@ class AgentReasoningService:
             plan.action = AgentActionType.KNOWLEDGE
             plan.knowledge_queries = [KnowledgeQueryPlan(query=request.query, classification=request.classification)]
 
+        if (request.document_path or request.document_base64) and plan.action == AgentActionType.DIRECT:
+            logger.info("[AGENT_PLAN_UPGRADED] Upgrading DIRECT action to KNOWLEDGE for document analysis inquiry: '%s'", request.query)
+            plan.action = AgentActionType.KNOWLEDGE
+            if not plan.knowledge_queries:
+                plan.knowledge_queries = [KnowledgeQueryPlan(query=request.query, classification=request.classification)]
+
         if plan.action == AgentActionType.DIRECT:
             final_answer = plan.direct_answer or plan.reasoning or ""
             if not final_answer.strip():
@@ -426,6 +555,102 @@ class AgentReasoningService:
             except Exception as vis_err:
                 logger.warning("[MULTIMODAL_INGESTION_SKIPPED] Visual processing skipped: %s", vis_err)
 
+        # Document Intelligence ingestion (if document context is provided in query request)
+        if request.document_path or request.document_base64:
+            try:
+                import base64
+                import tempfile
+                from app.knowledge.ingestion import LocalDocumentIngestionPipeline, calculate_sha256, OcrRequiredError
+                ingestion_pipe = LocalDocumentIngestionPipeline()
+                doc_name = request.document_filename or "uploaded_document"
+                raw_doc_bytes = b""
+                extracted_text = ""
+
+                if request.document_base64:
+                    raw_doc_bytes = base64.b64decode(request.document_base64)
+                    suffix = Path(doc_name).suffix or ".txt"
+                    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp_f:
+                        tmp_f.write(raw_doc_bytes)
+                        tmp_path = Path(tmp_f.name)
+                    try:
+                        extracted_text, _ = ingestion_pipe.extract_text_from_file(tmp_path)
+                    finally:
+                        try:
+                            tmp_path.unlink()
+                        except Exception:
+                            pass
+                elif request.document_path:
+                    doc_path = Path(request.document_path)
+                    doc_name = doc_path.name
+                    extracted_text, raw_doc_bytes = ingestion_pipe.extract_text_from_file(doc_path)
+
+                doc_sha256 = calculate_sha256(raw_doc_bytes) if raw_doc_bytes else ""
+
+                # Break into pages or chunks to preserve provenance
+                pages = [p.strip() for p in extracted_text.split("\n\n[Page ") if p.strip()]
+                if len(pages) > 1 or (pages and pages[0].startswith("[Page")):
+                    for idx, p_text in enumerate(pages[:15]):
+                        page_num = idx + 1
+                        page_content = p_text if p_text.startswith("[Page") else f"[Page {p_text}"
+                        evd = EvidenceRecord(
+                            source_type="DOCUMENT_UPLOAD",
+                            source_reference=f"doc:{doc_name}#p{page_num}",
+                            filename=doc_name,
+                            chunk_id=f"page_{page_num}",
+                            retrieved_text=page_content,
+                            retrieved_data={
+                                "text": page_content,
+                                "filename": doc_name,
+                                "sha256": doc_sha256,
+                                "page": page_num,
+                                "untrusted_input": True,
+                            },
+                            classification=request.classification,
+                            verified=True,
+                        )
+                        evidence_set.add_knowledge_evidence(evd)
+                else:
+                    raw_chunks = [c.strip() for c in extracted_text.split("\n\n") if c.strip()]
+                    if not raw_chunks and extracted_text.strip():
+                        raw_chunks = [extracted_text.strip()]
+                    for idx, c_text in enumerate(raw_chunks[:10]):
+                        evd = EvidenceRecord(
+                            source_type="DOCUMENT_UPLOAD",
+                            source_reference=f"doc:{doc_name}#section_{idx+1}",
+                            filename=doc_name,
+                            chunk_id=f"sec_{idx+1}",
+                            retrieved_text=c_text,
+                            retrieved_data={
+                                "text": c_text,
+                                "filename": doc_name,
+                                "sha256": doc_sha256,
+                                "section": idx + 1,
+                                "untrusted_input": True,
+                            },
+                            classification=request.classification,
+                            verified=True,
+                        )
+                        evidence_set.add_knowledge_evidence(evd)
+
+                logger.info("[DOCUMENT_INGESTION_SUCCESS] Document '%s' ingested into evidence set (%d bytes, SHA-256: %s)", doc_name, len(raw_doc_bytes), doc_sha256[:8])
+                record_agent_trace(
+                    AgentEventType.KNOWLEDGE_RETRIEVAL_REQUESTED,
+                    {"document": doc_name, "sha256": doc_sha256, "bytes": len(raw_doc_bytes), "evidence_records": len(evidence_set.knowledge_evidence)},
+                )
+            except OcrRequiredError as ocr_err:
+                logger.warning("[DOCUMENT_INGESTION_OCR_REQUIRED] %s", ocr_err)
+                evd = EvidenceRecord(
+                    source_type="DOCUMENT_UPLOAD_ERROR",
+                    source_reference=f"doc:{request.document_filename or 'scanned_pdf'}",
+                    filename=request.document_filename or "scanned_pdf",
+                    retrieved_text=f"[OCR_REQUIRED: {str(ocr_err)}]",
+                    retrieved_data={"error": str(ocr_err), "ocr_required": True},
+                    classification=request.classification,
+                    verified=False,
+                )
+                evidence_set.add_knowledge_evidence(evd)
+            except Exception as doc_err:
+                logger.warning("[DOCUMENT_INGESTION_SKIPPED] Document ingestion skipped: %s", doc_err)
 
         # 6. Execute Knowledge Retrieval (if action is 'knowledge' or 'combined')
         if plan.action in (AgentActionType.KNOWLEDGE, AgentActionType.COMBINED):

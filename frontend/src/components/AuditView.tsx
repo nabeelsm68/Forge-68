@@ -14,6 +14,7 @@ import {
   Divider,
 } from "@/components/primitives";
 import { useTranslation } from "@/lib/i18n";
+import { ReadAloudButton } from "@/components/ReadAloudButton";
 
 type EventFilter = "ALL" | "AGENT" | "TOOL" | "POLICY" | "VERIFICATION" | "KNOWLEDGE";
 
@@ -262,9 +263,12 @@ export function AuditView() {
               </span>
             </div>
 
-            <h1 style={{ fontFamily: "var(--font-display)", fontSize: "38px", color: "var(--ink)", fontWeight: 500, lineHeight: 1.1 }}>
-              {t("auditTitle")}
-            </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <h1 style={{ fontFamily: "var(--font-display)", fontSize: "38px", color: "var(--ink)", fontWeight: 500, lineHeight: 1.1 }}>
+                {t("auditTitle")}
+              </h1>
+              <ReadAloudButton text={`${t("auditTitle")}. ${t("auditSubtitle")}`} />
+            </div>
 
             <p style={{ fontFamily: "var(--font-ui)", fontSize: "15px", color: "var(--ink-2)", marginTop: 6, maxWidth: 680 }}>
               {t("auditSubtitle")}
@@ -556,6 +560,7 @@ export function AuditView() {
                       >
                         {formatISTTimestamp(evt.timestamp)}
                       </span>
+                      <ReadAloudButton text={humanInfo.explanation} compact />
                       <button
                         onClick={() => toggleExpand(evt.id)}
                         style={{

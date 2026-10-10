@@ -14,6 +14,41 @@ export interface RolePermissionConfig {
 }
 
 export const ROLE_PERMISSIONS: Record<Role, RolePermissionConfig> = {
+  VIEWER: {
+    role: "VIEWER",
+    label: "Viewer",
+    defaultClearance: "INTERNAL",
+    summary: "Read-only observer role. Cannot execute privileged or active tools.",
+    read: "ALLOWED",
+    investigate: "BLOCKED",
+    actuate: "BLOCKED",
+    admin: "BLOCKED",
+    bulletPoints: [
+      "Read plant telemetry & equipment dashboard displays",
+      "Read public and internal plant documentation",
+      "Tool execution strictly blocked under default-deny policy",
+      "Physical machinery actuation strictly blocked",
+      "Administrative overrides blocked",
+    ],
+    actuationExplanation: "Viewers have read-only visibility. All active tool operations and investigations are blocked.",
+  },
+  ADMINISTRATOR: {
+    role: "ADMINISTRATOR",
+    label: "Administrator",
+    defaultClearance: "CRITICAL",
+    summary: "Administrative authority. Administrative/security testing capabilities; critical actuation strictly requires approval.",
+    read: "ALLOWED",
+    investigate: "ALLOWED",
+    actuate: "NEEDS_APPROVAL",
+    admin: "ALLOWED",
+    bulletPoints: [
+      "Broadest read access across all plant data",
+      "Execute security boundary and quarantine verification tests",
+      "Critical valve calibration strictly requires supervisor approval (no bypass)",
+      "All actions subject to immutable local audit logging",
+    ],
+    actuationExplanation: "Administrators cannot unilaterally bypass critical actuation safety gates. Shift supervisor approval is strictly required.",
+  },
   ENGINEER: {
     role: "ENGINEER",
     label: "Engineer",

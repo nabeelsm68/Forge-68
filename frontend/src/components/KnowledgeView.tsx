@@ -813,6 +813,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                         <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--sage)", fontWeight: 600 }}>
                           {(r.score * 100).toFixed(1)}% MATCH
                         </span>
+                        <ReadAloudButton text={r.chunk.text} compact />
                         <button
                           onClick={() => handleOpenReader(r.chunk.document_id || docName)}
                           className="btn-brass-secondary"
@@ -1004,6 +1005,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                   <span style={{ color: "var(--ink-3)" }}>
                     SHA-256: {readerDoc.content_hash.slice(0, 16)}...
                   </span>
+                  <ReadAloudButton text={readerDoc.extracted_text.slice(0, 2000)} compact />
                   <div style={{ display: "flex", gap: 4 }}>
                     <button
                       onClick={() => setReaderViewTab("text")}

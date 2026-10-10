@@ -77,8 +77,34 @@ class PolicyGateway:
         risk = tool_meta.risk_level
         approval_required = tool_meta.approval_required or (risk == RiskLevel.CRITICAL)
 
+        def _role_matches(req_r: Role, allowed_set: Any) -> bool:
+            if req_r in allowed_set:
+                return True
+            if req_r == Role.ADMINISTRATOR and Role.ADMIN in allowed_set:
+                return True
+            if req_r == Role.ADMIN and Role.ADMINISTRATOR in allowed_set:
+                return True
+            return False
+
+        # 1b. Role VIEWER is strictly read-only: zero tool execution permitted
+        if request.role == Role.VIEWER:
+            decision = PolicyDecision(
+                decision=PolicyDecisionType.DENY,
+                reason=f"Role 'VIEWER' is strictly read-only and is not permitted to execute tool '{tool_meta.name}'.",
+                policy_id=None,
+                requester=request.requester,
+                role=request.role,
+                tool=tool_meta.name,
+                classification=request.classification,
+                risk=risk,
+                approval_required=approval_required,
+                approved=request.has_approval,
+            )
+            self._record_evaluation_event(request, decision, tool_meta.version)
+            return decision
+
         # 2. Check Tool-level allowed roles
-        if request.role not in tool_meta.allowed_roles:
+        if not _role_matches(request.role, tool_meta.allowed_roles):
             decision = PolicyDecision(
                 decision=PolicyDecisionType.DENY,
                 reason=f"Role '{request.role.value}' is not authorized to execute tool '{tool_meta.name}'.",
@@ -136,7 +162,7 @@ class PolicyGateway:
         # Evaluate rules in order
         for rule in matching_rules:
             # Check role permission in rule
-            if request.role not in rule.allowed_roles:
+            if not _role_matches(request.role, rule.allowed_roles):
                 continue
 
             # Check classification permission in rule

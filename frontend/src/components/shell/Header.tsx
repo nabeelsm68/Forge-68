@@ -351,7 +351,7 @@ export function Header({
 
               {/* 1-Click Role Selection Cards */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
-                {(["ENGINEER", "INSPECTOR", "AI_OPERATOR", "ADMIN", "SECURITY_OFFICER"] as Role[]).map((r) => {
+                {(["VIEWER", "ENGINEER", "ADMINISTRATOR"] as Role[]).map((r) => {
                   const cfg = ROLE_PERMISSIONS[r];
                   const isCurrent = role === r;
                   return (

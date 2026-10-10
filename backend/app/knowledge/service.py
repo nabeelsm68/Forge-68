@@ -367,6 +367,42 @@ class KnowledgeService:
                     )
                 return msg, [r["title"] for r in restricted]
 
+            q_clean = query.strip().lower()
+            general_concept_terms = [
+                "what is", "explain", "how does", "define", "principles",
+                "reactor", "heat exchanger", "pump", "hydrocracking", "mawp", "sop", "cavitation"
+            ]
+            is_general = any(t in q_clean for t in general_concept_terms) and not any(tag in q_clean for tag in ["r-204", "r204", "pi-204", "p-201", "e-301"])
+
+            if is_general:
+                try:
+                    from app.models import get_model_provider, ModelRequest, ModelMessage
+                    gen_prompt = (
+                        "You are FORGE, an on-premise industrial AI engineering assistant. "
+                        "The operator searched Plant Knowledge for a general chemical or process engineering concept. "
+                        "Provide a helpful, accurate technical explanation of the concept based on chemical engineering principles. "
+                        "Add a clear concluding note: '[Note: General engineering explanation. No facility-specific plant documents were matched for this generic search term.]'"
+                    )
+                    if language == "hi":
+                        gen_prompt += "\nRespond in fluent Hindi (हिन्दी). Keep engineering units and standard acronyms in English/standard digits."
+                    elif language == "kn":
+                        gen_prompt += "\nRespond in fluent Kannada (ಕನ್ನಡ). Keep engineering units and standard acronyms in English/standard digits."
+
+                    provider = get_model_provider()
+                    g_req = ModelRequest(
+                        messages=[
+                            ModelMessage(role="system", content=gen_prompt),
+                            ModelMessage(role="user", content=query),
+                        ],
+                        temperature=0.2,
+                        max_tokens=500,
+                    )
+                    g_resp = await provider.generate(g_req)
+                    if g_resp.content and len(g_resp.content.strip()) > 20:
+                        return g_resp.content.strip(), ["General Chemical Engineering Principles"]
+                except Exception:
+                    pass
+
             msg = "No sovereign plant documentation found matching the query in local records."
             if language == "hi":
                 msg = "स्थानीय संप्रभु ज्ञानकोष में इस खोज के लिए कोई प्रासंगिक प्लांट दस्तावेज़ नहीं मिला।"
@@ -551,8 +587,8 @@ class KnowledgeService:
             raise PathTraversalError("Invalid filename provided.")
 
         suffix = Path(safe_name).suffix.lower()
-        if suffix not in (".txt", ".md", ".pdf"):
-            raise UnsupportedFormatError(f"Unsupported format '{suffix}'. Allowed: .txt, .md, .pdf")
+        if suffix not in (".txt", ".md", ".pdf", ".docx"):
+            raise UnsupportedFormatError(f"Unsupported format '{suffix}'. Allowed: .txt, .md, .pdf, .docx")
 
         # 2. Check size limit (max 25MB)
         if len(content_bytes) > 25 * 1024 * 1024:

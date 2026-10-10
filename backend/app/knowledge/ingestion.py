@@ -149,24 +149,53 @@ class LocalDocumentIngestionPipeline:
 
             reader = pypdf.PdfReader(file_path)
             extracted_pages = []
-            for page in reader.pages:
+            for page_idx, page in enumerate(reader.pages):
                 page_text = page.extract_text() or ""
-                extracted_pages.append(page_text)
+                if page_text.strip():
+                    extracted_pages.append(f"[Page {page_idx + 1}]\n{page_text.strip()}")
+                else:
+                    extracted_pages.append(page_text)
 
             full_text = "\n\n".join(extracted_pages).strip()
 
             # Detection of scanned/image-only PDFs
-            if len(reader.pages) > 0 and len(full_text) < 15:
+            stripped_text = re.sub(r"\[Page \d+\]", "", full_text).strip()
+            if len(reader.pages) > 0 and len(stripped_text) < 15:
                 raise OcrRequiredError(
                     f"PDF '{file_path.name}' contains no extractable digital text stream. "
-                    "Scanned image detected: requires OCR pipeline (Milestone 4 does not support OCR)."
+                    "Scanned image detected: requires OCR engine for local text extraction."
                 )
 
             return full_text, raw_bytes
 
+        elif suffix == ".docx":
+            import xml.etree.ElementTree as ET
+            import zipfile
+
+            try:
+                with zipfile.ZipFile(file_path, "r") as z:
+                    if "word/document.xml" not in z.namelist():
+                        raise ValueError(f"DOCX '{file_path.name}' is missing word/document.xml.")
+                    xml_content = z.read("word/document.xml")
+
+                tree = ET.fromstring(xml_content)
+                ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+                paragraphs = []
+                for p in tree.findall(".//w:p", ns):
+                    p_text = "".join(node.text for node in p.findall(".//w:t", ns) if node.text)
+                    if p_text.strip():
+                        paragraphs.append(p_text.strip())
+
+                full_text = "\n\n".join(paragraphs).strip()
+                if not full_text:
+                    raise ValueError(f"DOCX '{file_path.name}' contains no readable text content.")
+                return full_text, raw_bytes
+            except Exception as docx_err:
+                raise ValueError(f"Failed to parse DOCX '{file_path.name}': {docx_err}") from docx_err
+
         else:
             raise UnsupportedFormatError(
-                f"Unsupported document format '{suffix}'. Supported formats: .txt, .md, .pdf"
+                f"Unsupported document format '{suffix}'. Supported formats: .txt, .md, .pdf, .docx"
             )
 
     def ingest_file(

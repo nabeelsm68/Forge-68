@@ -29,6 +29,8 @@ import {
 import { ROLE_PERMISSIONS } from "@/lib/permissions";
 import { useTranslation } from "@/lib/i18n";
 import { ReadAloudButton } from "@/components/ReadAloudButton";
+import { EngineeringVisualizations } from "@/components/instruments";
+import { playPolicyDenialAlarm, isAlarmMuted, setAlarmMuted } from "@/lib/alarmAudio";
 
 interface AIWorkspaceViewProps {
   role: Role;
@@ -60,6 +62,9 @@ export function AIWorkspaceView({
   const [selectedImage, setSelectedImage] = useState<string>("none");
   const [customBase64, setCustomBase64] = useState<string | null>(null);
   const [customFilename, setCustomFilename] = useState<string>("uploaded_image.png");
+  const [customDocBase64, setCustomDocBase64] = useState<string | null>(null);
+  const [customDocFilename, setCustomDocFilename] = useState<string | null>(null);
+  const [alarmMuted, setAlarmMutedState] = useState<boolean>(() => isAlarmMuted());
   const [isLoading, setIsLoading] = useState(false);
   const [activeScenarioId, setActiveScenarioId] = useState<DemoScenarioId | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -212,13 +217,34 @@ export function AIWorkspaceView({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setCustomFilename(file.name);
+    if (file.size > 25 * 1024 * 1024) {
+      setError("File exceeds 25MB limit. Please upload a smaller document or image.");
+      return;
+    }
+
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    const isDoc = ["pdf", "docx", "txt", "md"].includes(ext || "");
+    const isImg = ["png", "jpg", "jpeg", "webp"].includes(ext || "");
+
+    if (!isDoc && !isImg) {
+      setError(`Unsupported file format: .${ext}. Supported: PDF, DOCX, TXT, MD, PNG, JPG, WEBP.`);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       const resultStr = reader.result as string;
       const base64Data = resultStr.split(",")[1];
-      setCustomBase64(base64Data);
-      setSelectedImage("custom");
+      if (isDoc) {
+        setCustomDocFilename(file.name);
+        setCustomDocBase64(base64Data);
+        setCustomFilename(file.name);
+        setQuery((prev) => (prev.trim() && !prev.includes("Analyze Reactor R-204") ? prev : `Inspect and summarize uploaded document '${file.name}'.`));
+      } else {
+        setCustomFilename(file.name);
+        setCustomBase64(base64Data);
+        setSelectedImage("custom");
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -250,6 +276,16 @@ export function AIWorkspaceView({
       if (reqId !== activeRequestIdRef.current) return;
       setResponse(res);
       setActiveSubTab("FINDINGS");
+
+      // TASK 4: Play audible alarm when policy is denied (Scenario C)
+      const isPolicyDenied =
+        scenarioId === "policy_denial" ||
+        res.status === "POLICY_DENIED" ||
+        res.policy_decisions?.some((d) => d.decision === "DENY");
+      if (isPolicyDenied) {
+        playPolicyDenialAlarm(res.run_id || `scenario-${scenarioId}`);
+      }
+
       if (onExecutionComplete) {
         onExecutionComplete(res);
       }
@@ -282,6 +318,11 @@ export function AIWorkspaceView({
       language,
     };
 
+    if (customDocBase64 && customDocFilename) {
+      payload.document_base64 = customDocBase64;
+      payload.document_filename = customDocFilename;
+    }
+
     if (selectedImage === "custom" && customBase64) {
       payload.image_base64 = customBase64;
     } else if (selectedImage !== "none") {
@@ -293,6 +334,16 @@ export function AIWorkspaceView({
       if (reqId !== activeRequestIdRef.current) return;
       setResponse(res);
       setActiveSubTab("FINDINGS");
+
+      // TASK 4: Audible alarm on blocked critical operation
+      const isPolicyDenied =
+        res.status === "POLICY_DENIED" ||
+        res.policy_decisions?.some((d) => d.decision === "DENY") ||
+        res.policy_decision?.decision === "DENY";
+      if (isPolicyDenied) {
+        playPolicyDenialAlarm(res.run_id || `query-${Date.now()}`);
+      }
+
       if (onExecutionComplete) {
         onExecutionComplete(res);
       }
@@ -306,14 +357,19 @@ export function AIWorkspaceView({
     }
   };
 
-  // Handle external query auto-execution (e.g. from Voice Assistant)
+  // TASK 9: Robust voice query transfer & execution handling
   useEffect(() => {
-    if (externalQuery && autoExecuteQuery) {
-      const timer = setTimeout(() => {
-        handleRunQuery(externalQuery);
+    if (externalQuery) {
+      setQuery(externalQuery);
+      if (autoExecuteQuery) {
+        const timer = setTimeout(() => {
+          handleRunQuery(externalQuery);
+          onExternalQueryHandled?.();
+        }, 60);
+        return () => clearTimeout(timer);
+      } else {
         onExternalQueryHandled?.();
-      }, 0);
-      return () => clearTimeout(timer);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalQuery, autoExecuteQuery]);
@@ -675,9 +731,46 @@ export function AIWorkspaceView({
                 cursor: "pointer",
               }}
             >
-              Upload Image...
-              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileUpload} style={{ display: "none" }} />
+              Upload Doc / Image...
+              <input type="file" accept=".pdf,.docx,.txt,.md,image/png,image/jpeg,image/webp" onChange={handleFileUpload} style={{ display: "none" }} />
             </label>
+
+            {customDocFilename && (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "rgba(197, 160, 89, 0.12)",
+                  border: "1px solid var(--brass)",
+                  color: "var(--brass)",
+                  padding: "3px 8px",
+                  borderRadius: "var(--radius-pill)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "11px",
+                }}
+              >
+                📄 {customDocFilename}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomDocFilename(null);
+                    setCustomDocBase64(null);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--brass)",
+                    cursor: "pointer",
+                    padding: "0 2px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                  }}
+                >
+                  ✕
+                </button>
+              </span>
+            )}
 
             <button
               onClick={handleDirectVisionAnalyze}
@@ -1046,6 +1139,40 @@ export function AIWorkspaceView({
 
               <Divider style={{ margin: "4px 0" }} />
 
+              {/* Audible Alarm Alert Banner (TASK 4) */}
+              <div
+                style={{
+                  background: "rgba(220, 38, 38, 0.14)",
+                  border: "1px solid var(--coral)",
+                  borderRadius: "var(--radius-panel)",
+                  padding: "12px 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: "18px" }}>🚨</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--coral-text)", fontWeight: 600 }}>
+                    POLICY GATEWAY INTERCEPT: CRITICAL ACTUATION BLOCKED — AUDIBLE WARNING ALARM TRIGGERED
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !alarmMuted;
+                    setAlarmMuted(next);
+                    setAlarmMutedState(next);
+                  }}
+                  className="btn-brass-secondary"
+                  style={{ fontSize: "11px", padding: "4px 10px" }}
+                >
+                  {alarmMuted ? "🔇 Alarm Muted" : "🔊 Mute Alarm"}
+                </button>
+              </div>
+
               {/* Human-First Explanation Hero */}
               <div style={{ background: "rgba(217, 105, 78, 0.08)", border: "1px solid var(--coral)", borderRadius: "var(--radius-panel)", padding: "20px 24px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
@@ -1393,6 +1520,18 @@ export function AIWorkspaceView({
                 </div>
               </div>
 
+              {/* Engineering Visualizations Dashboard (TASK 6) */}
+              <EngineeringVisualizations
+                currentPressure={31.4}
+                baselinePressure={31.2}
+                alarmPressure={33.5}
+                tripPressure={35.0}
+                wallMeasured={72.8}
+                wallDesign={75.0}
+                wallRetirement={68.2}
+                showWallThickness={true}
+              />
+
               {/* EVIDENCE & INDEPENDENT CHECKS SUMMARY */}
               <div
                 className="workspace-evidence-grid"
@@ -1676,6 +1815,15 @@ export function AIWorkspaceView({
                 </div>
               </div>
 
+              {/* Engineering Visualizations Dashboard (TASK 6) */}
+              <EngineeringVisualizations
+                currentPressure={33.0}
+                baselinePressure={31.2}
+                alarmPressure={33.5}
+                tripPressure={35.0}
+                showWallThickness={false}
+              />
+
               {/* EVIDENCE & INDEPENDENT CHECKS SUMMARY */}
               <div
                 className="workspace-evidence-grid"
@@ -1856,6 +2004,31 @@ export function AIWorkspaceView({
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>Independent safety checks</span>
                 </div>
               </div>
+
+              {/* Engineering Visualizations for R-204 Inquiries (TASK 6) */}
+              {(query.toLowerCase().includes("r-204") ||
+                query.toLowerCase().includes("reactor") ||
+                query.toLowerCase().includes("pressure") ||
+                query.toLowerCase().includes("pi-204") ||
+                query.toLowerCase().includes("wall") ||
+                query.toLowerCase().includes("thickness") ||
+                (response?.final_answer?.toLowerCase() || "").includes("r-204") ||
+                (response?.final_answer?.toLowerCase() || "").includes("bar")) && (
+                <EngineeringVisualizations
+                  currentPressure={33.0}
+                  baselinePressure={31.2}
+                  alarmPressure={33.5}
+                  tripPressure={35.0}
+                  wallMeasured={10.4}
+                  wallDesign={12.0}
+                  wallRetirement={8.0}
+                  showWallThickness={
+                    query.toLowerCase().includes("wall") ||
+                    query.toLowerCase().includes("thickness") ||
+                    (response?.final_answer?.toLowerCase() || "").includes("thickness")
+                  }
+                />
+              )}
             </div>
           )}
 

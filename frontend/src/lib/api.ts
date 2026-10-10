@@ -3,7 +3,7 @@
  * Strictly consumes real sovereign backend endpoints without external cloud dependencies.
  */
 
-export type Role = "ADMIN" | "ENGINEER" | "INSPECTOR" | "MANAGER" | "AUDITOR" | "AI_OPERATOR" | "SECURITY_OFFICER";
+export type Role = "VIEWER" | "ENGINEER" | "ADMINISTRATOR" | "ADMIN" | "INSPECTOR" | "MANAGER" | "AUDITOR" | "AI_OPERATOR" | "SECURITY_OFFICER";
 export type DataClassification = "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED" | "CRITICAL";
 export type PolicyDecisionType = "ALLOW" | "DENY";
 export type VerificationStatus = "VERIFIED" | "PARTIALLY_VERIFIED" | "INSUFFICIENT_EVIDENCE" | "NEEDS_REVIEW" | "FAILED";
@@ -128,6 +128,9 @@ export interface AgentQueryRequest {
   has_approval?: boolean;
   image_path?: string;
   image_base64?: string;
+  document_path?: string;
+  document_base64?: string;
+  document_filename?: string;
   language?: "en" | "hi" | "kn";
 }
 

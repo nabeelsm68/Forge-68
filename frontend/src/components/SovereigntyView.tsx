@@ -18,6 +18,7 @@ import {
   Divider,
 } from "@/components/primitives";
 import { useTranslation } from "@/lib/i18n";
+import { ReadAloudButton } from "@/components/ReadAloudButton";
 
 export function SovereigntyView() {
   const { t } = useTranslation();
@@ -142,9 +143,12 @@ export function SovereigntyView() {
               </span>
             </div>
 
-            <h1 style={{ fontFamily: "var(--font-display)", fontSize: "38px", color: "var(--ink)", fontWeight: 500, lineHeight: 1.1 }}>
-              {t("sovTitle")}
-            </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <h1 style={{ fontFamily: "var(--font-display)", fontSize: "38px", color: "var(--ink)", fontWeight: 500, lineHeight: 1.1 }}>
+                {t("sovTitle")}
+              </h1>
+              <ReadAloudButton text={`${t("sovTitle")}. ${t("sovSubtitle")}`} />
+            </div>
 
             <p style={{ fontFamily: "var(--font-ui)", fontSize: "15px", color: "var(--ink-2)", marginTop: 6, lineHeight: 1.6 }}>
               {t("sovSubtitle")}

@@ -10,6 +10,7 @@ import {
 import { EnamelSurface, SectionHeader, BrassLabel } from "./primitives";
 import { useTranslation } from "@/lib/i18n";
 import { ROLE_PERMISSIONS } from "@/lib/permissions";
+import { ReadAloudButton } from "@/components/ReadAloudButton";
 
 interface GovernanceViewProps {
   role?: string;
@@ -109,18 +110,21 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
           </span>
         </div>
 
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontWeight: 500,
-            fontSize: "40px",
-            lineHeight: 1.1,
-            color: "var(--ink)",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          {t("govTitle")}
-        </h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <h1
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 500,
+              fontSize: "40px",
+              lineHeight: 1.1,
+              color: "var(--ink)",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {t("govTitle")}
+          </h1>
+          <ReadAloudButton text={`${t("govTitle")}. ${t("govSubtitle")}`} />
+        </div>
 
         <p
           style={{

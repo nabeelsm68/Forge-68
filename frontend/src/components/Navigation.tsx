@@ -117,11 +117,9 @@ export function Navigation({
                 fontSize: "0.75rem",
               }}
             >
-              <option value="ENGINEER">ENGINEER (Standard Ops)</option>
-              <option value="INSPECTOR">INSPECTOR (Audits & Visuals)</option>
-              <option value="AI_OPERATOR">AI_OPERATOR (Restricted)</option>
-              <option value="ADMIN">ADMIN (Full Clearance)</option>
-              <option value="SECURITY_OFFICER">SECURITY_OFFICER</option>
+              <option value="VIEWER">VIEWER (Read-Only)</option>
+              <option value="ENGINEER">ENGINEER (Standard Operations)</option>
+              <option value="ADMINISTRATOR">ADMINISTRATOR (Full Clearance)</option>
             </select>
           </div>
 

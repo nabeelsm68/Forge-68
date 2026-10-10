@@ -306,3 +306,29 @@ def test_api_agent_query_endpoint_exists():
     resp = client.post("/api/v1/agent/query", json=payload)
     # Any 2xx or 422 (validation) is acceptable; 404 means endpoint is missing
     assert resp.status_code != 404, "Agent query endpoint must be registered"
+
+
+@pytest.mark.asyncio
+async def test_agent_conversational_greeting_routing():
+    """Verify general conversational questions like 'Hi, how are you?' are answered directly."""
+    service = AgentReasoningService(model_provider=MockModelProvider(responses=[]))
+    result = await service.process_query(AgentQueryRequest(
+        query="Hi, how are you?",
+        language="en",
+    ))
+    assert result.status == AgentQueryStatus.DIRECT_ANSWER
+    assert "optimally" in result.final_answer or "FORGE" in result.final_answer
+    assert len(result.tool_calls) == 0
+
+
+@pytest.mark.asyncio
+async def test_agent_general_concept_routing():
+    """Verify generic engineering concept questions like 'What is a reactor?' are answered directly."""
+    service = AgentReasoningService(model_provider=MockModelProvider(responses=["A chemical reactor is an enclosed pressure vessel for reactions."]))
+    result = await service.process_query(AgentQueryRequest(
+        query="What is a reactor?",
+        language="en",
+    ))
+    assert result.status == AgentQueryStatus.DIRECT_ANSWER
+    assert "reactor" in result.final_answer.lower()
+    assert len(result.tool_calls) == 0

@@ -7,6 +7,7 @@ from app.security import (
     PolicyDecisionType,
     PolicyEvaluationRequest,
     PolicyGateway,
+    policy_gateway,
     PolicyRule,
     RiskLevel,
     Role,
@@ -259,3 +260,44 @@ def test_auditable_execution_event_emitted(custom_gateway):
     assert event.execution_status == ExecutionStatus.BLOCKED_BY_POLICY
     assert event.event_id is not None
     assert event.timestamp is not None
+
+
+def test_case_viewer_read_only_denies_all_tools():
+    """Verify that Role.VIEWER is strictly read-only and denied tool execution."""
+    req = PolicyEvaluationRequest(
+        requester="viewer_bob",
+        role=Role.VIEWER,
+        tool_name="equipment_history",
+        classification=DataClassification.INTERNAL,
+    )
+    decision = policy_gateway.evaluate(req)
+    assert decision.decision == PolicyDecisionType.DENY
+    assert "VIEWER" in decision.reason
+    assert "read-only" in decision.reason
+
+
+def test_case_administrator_critical_actuation_without_approval_denied():
+    """Verify that ADMINISTRATOR without supervisor approval is still DENIED critical actuation."""
+    req = PolicyEvaluationRequest(
+        requester="admin_carol",
+        role=Role.ADMINISTRATOR,
+        tool_name="calibrate_pressure_relief_valve",
+        classification=DataClassification.CRITICAL,
+        has_approval=False,
+    )
+    decision = policy_gateway.evaluate(req)
+    assert decision.decision == PolicyDecisionType.DENY
+    assert "requires mandatory supervisor approval" in decision.reason
+
+
+def test_case_administrator_critical_actuation_with_approval_allowed():
+    """Verify that ADMINISTRATOR with supervisor approval and critical clearance is permitted."""
+    req = PolicyEvaluationRequest(
+        requester="admin_carol",
+        role=Role.ADMINISTRATOR,
+        tool_name="calibrate_pressure_relief_valve",
+        classification=DataClassification.CRITICAL,
+        has_approval=True,
+    )
+    decision = policy_gateway.evaluate(req)
+    assert decision.decision == PolicyDecisionType.ALLOW

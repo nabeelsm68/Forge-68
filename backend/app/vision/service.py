@@ -37,12 +37,14 @@ logger.setLevel(logging.INFO)
 # Map Role to maximum clearance tier
 ROLE_CLEARANCE: Dict[Role, DataClassification] = {
     Role.ADMIN: DataClassification.CRITICAL,
+    Role.ADMINISTRATOR: DataClassification.CRITICAL,
     Role.SECURITY_OFFICER: DataClassification.CRITICAL,
     Role.ENGINEER: DataClassification.RESTRICTED,
     Role.INSPECTOR: DataClassification.CONFIDENTIAL,
     Role.AUDITOR: DataClassification.CONFIDENTIAL,
     Role.AI_OPERATOR: DataClassification.INTERNAL,
     Role.MANAGER: DataClassification.CONFIDENTIAL,
+    Role.VIEWER: DataClassification.INTERNAL,
 }
 
 

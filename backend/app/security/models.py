@@ -7,8 +7,10 @@ from pydantic import BaseModel, Field
 
 class Role(str, Enum):
     """Sovereign Industrial System Roles."""
-    ADMIN = "ADMIN"
+    VIEWER = "VIEWER"
     ENGINEER = "ENGINEER"
+    ADMIN = "ADMIN"
+    ADMINISTRATOR = "ADMINISTRATOR"
     INSPECTOR = "INSPECTOR"
     MANAGER = "MANAGER"
     AUDITOR = "AUDITOR"
