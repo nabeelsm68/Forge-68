@@ -6,6 +6,7 @@ import {
   DocumentContentResponse,
   KnowledgeDocsResponse,
   KnowledgeSearchResponse,
+  Role,
   fetchDocumentContent,
   fetchKnowledgeDocuments,
   ingestKnowledgeDocument,
@@ -22,9 +23,11 @@ import { ReadAloudButton } from "@/components/ReadAloudButton";
 
 interface KnowledgeViewProps {
   clearance: DataClassification;
+  role?: Role;
 }
 
-export function KnowledgeView({ clearance }: KnowledgeViewProps) {
+export function KnowledgeView({ clearance, role = "ENGINEER" }: KnowledgeViewProps) {
+  const isViewer = role === "VIEWER";
   const { t, language } = useTranslation();
   const [docsData, setDocsData] = useState<KnowledgeDocsResponse | null>(null);
   const [isLoadingDocs, setIsLoadingDocs] = useState<boolean>(true);
@@ -132,6 +135,10 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
   };
 
   const handleQuickIngest = async (filePath: string, classification: DataClassification) => {
+    if (isViewer) {
+      setIngestStatus("UNAUTHORIZED: Role 'VIEWER' has read-only observer clearance. Re-indexing is restricted.");
+      return;
+    }
     setIsIngesting(true);
     setIngestStatus(null);
     try {
@@ -147,6 +154,10 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isViewer) {
+      setUploadError("UNAUTHORIZED: Role 'VIEWER' is restricted to read-only observer status. Document upload is blocked.");
+      return;
+    }
     if (!uploadFile) {
       setUploadError("Please select a file to upload (.pdf, .txt, or .md).");
       return;
@@ -200,43 +211,43 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
   const getDocumentMeta = (filename: string) => {
     if (filename.includes("operating_sop")) {
       return {
-        title: "Operating SOP",
-        subtext: "Operating limits, normal baselines, and safety thresholds.",
-        category: "STANDARD PROCEDURE",
+        title: t("knowledgeDocSopTitle"),
+        subtext: t("knowledgeDocSopSub"),
+        category: t("knowledgeDocSopCat"),
       };
     }
     if (filename.includes("inspection_report")) {
       return {
-        title: "Inspection Report",
-        subtext: "Ultrasonic shell thickness survey and weld joint data.",
-        category: "NDT SURVEY",
+        title: t("knowledgeDocInspTitle"),
+        subtext: t("knowledgeDocInspSub"),
+        category: t("knowledgeDocInspCat"),
       };
     }
     if (filename.includes("equipment_specification")) {
       return {
-        title: "Equipment Specification",
-        subtext: "Pressure vessel R-204 design envelope and metallurgy.",
-        category: "VESSEL SPEC",
+        title: t("knowledgeDocSpecTitle"),
+        subtext: t("knowledgeDocSpecSub"),
+        category: t("knowledgeDocSpecCat"),
       };
     }
     if (filename.includes("maintenance_history")) {
       return {
-        title: "Maintenance History",
-        subtext: "Overhaul logs and relief valve calibration records.",
-        category: "PLANT HISTORY",
+        title: t("knowledgeDocMaintTitle"),
+        subtext: t("knowledgeDocMaintSub"),
+        category: t("knowledgeDocMaintCat"),
       };
     }
     if (filename.includes("adversarial")) {
       return {
-        title: "Restricted Advisory Bulletin",
-        subtext: "Quarantine sample containing untrusted prompt injection.",
-        category: "SECURITY TEST FIXTURE",
+        title: t("knowledgeDocAdvTitle"),
+        subtext: t("knowledgeDocAdvSub"),
+        category: t("knowledgeDocAdvCat"),
       };
     }
     return {
       title: filename.replace(/_/g, " ").replace(/\.[^/.]+$/, ""),
-      subtext: "Technical documentation record stored in sovereign archive.",
-      category: "DOCUMENT",
+      subtext: t("knowledgeDocGenericSub"),
+      category: t("knowledgeDocGenericCat"),
     };
   };
 
@@ -264,9 +275,9 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-              <BrassLabel variant="outline">PLANT KNOWLEDGE FABRIC</BrassLabel>
+              <BrassLabel variant="outline">{t("knowledgeFabricTag")}</BrassLabel>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-                PLANT UNIT 4 · HYDROCRACKER ASSET R-204
+                {t("knowledgeUnitTag")}
               </span>
               <span
                 style={{
@@ -279,7 +290,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                   border: "1px solid var(--sage)",
                 }}
               >
-                ON-PREMISE LOCAL VECTOR ARCHIVE
+                {t("knowledgeArchiveTag")}
               </span>
             </div>
 
@@ -306,7 +317,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
               className="btn-brass-secondary"
               style={{ fontSize: "12px", padding: "8px 14px" }}
             >
-              {isLoadingDocs ? "Refreshing..." : "↻ Refresh Records"}
+              {isLoadingDocs ? t("knowledgeRefreshing") : t("knowledgeRefresh")}
             </button>
           </div>
         </div>
@@ -317,10 +328,10 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
         <form onSubmit={handleSearch} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--brass)", letterSpacing: "0.06em" }}>
-              SEARCH PLANT ARCHIVE WITH SEMANTIC GROUNDING
+              {t("knowledgeSearchArchive")}
             </span>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              Clearance Enforced: {clearance}
+              {t("knowledgeClearanceEnforced")} {clearance}
             </span>
           </div>
 
@@ -329,7 +340,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Ask a question, e.g. 'What is the trip limit for Reactor R-204?'..."
+              placeholder={t("knowledgeSearchPlaceholder")}
               style={{
                 flex: 1,
                 minWidth: 280,
@@ -352,21 +363,36 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
               className="btn-brass-primary"
               style={{ padding: "12px 24px", fontSize: "13px" }}
             >
-              {isSearching ? "Searching..." : t("knowledgeSearchButton")}
+              {isSearching ? t("runningButton") : t("knowledgeSearchButton")}
             </button>
           </div>
 
           {/* Quick Query Suggestions */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              Suggested Queries:
+              {t("knowledgeSuggestedQueries")}
             </span>
-            {[
-              "Reactor R-204 normal operating pressure",
-              "R-204 high pressure trip limit shutdown threshold",
-              "Relief valve PSV-204 set pressure and calibration",
-              "Minimum shell wall thickness PAUT inspection",
-            ].map((q, idx) => (
+            {(language === "hi"
+              ? [
+                  "रिएक्टर R-204 सामान्य परिचालन दबाव",
+                  "R-204 उच्च दबाव ट्रिप सीमा और शटडाउन थ्रेशोल्ड",
+                  "सुरक्षा वाल्व PSV-204 सेट दबाव और अंशांकन",
+                  "न्यूनतम शेल दीवार मोटाई PAUT निरीक्षण",
+                ]
+              : language === "kn"
+              ? [
+                  "ರಿಯಾಕ್ಟರ್ R-204 ಸಾಮಾನ್ಯ ಕಾರ್ಯಾಚರಣಾ ಒತ್ತಡ",
+                  "R-204 ಅಧಿಕ ಒತ್ತಡದ ಟ್ರಿಪ್ ಮಿತಿ ಶಟ್‌ಡೌನ್ ಥ್ರೆಶೋಲ್ಡ್",
+                  "ರಿಲೀಫ್ ವಾಲ್ವ್ PSV-204 ಸೆಟ್ ಪ್ರೆಶರ್ ಮತ್ತು ಕ್ಯಾಲಿಬ್ರೇಷನ್",
+                  "ಕನಿಷ್ಠ ಗೋಡೆ ದಪ್ಪ PAUT ತಪಾಸಣೆ",
+                ]
+              : [
+                  "Reactor R-204 normal operating pressure",
+                  "R-204 high pressure trip limit shutdown threshold",
+                  "Relief valve PSV-204 set pressure and calibration",
+                  "Minimum shell wall thickness PAUT inspection",
+                ]
+            ).map((q, idx) => (
               <button
                 key={idx}
                 type="button"
@@ -431,10 +457,10 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
         <EnamelSurface variant="base" padding="normal">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--brass)", letterSpacing: "0.06em" }}>
-              INDEXED PLANT DOCUMENTS ({docsData?.ingested_documents?.length ?? 0} INDEXED / {docsData?.available_demo_documents?.length ?? 0} ON-DISK)
+              {t("knowledgeIndexedTag")} ({docsData?.ingested_documents?.length ?? 0} {t("knowledgeIndexedBadge")} / {docsData?.available_demo_documents?.length ?? 0} {t("knowledgeOnDiskTag")})
             </span>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              ASSET: R-204
+              {t("knowledgeAssetTag")}
             </span>
           </div>
 
@@ -487,19 +513,22 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                           {format}
                         </span>
                       </div>
-                      <span
-                        style={{
-                          fontFamily: "var(--font-mono)",
-                          fontSize: "11px",
-                          color: accessible ? "var(--sage)" : "var(--coral-text)",
-                          border: `1px solid ${accessible ? "var(--sage)" : "var(--coral)"}`,
-                          padding: "1px 8px",
-                          borderRadius: "var(--radius-pill)",
-                          background: accessible ? "rgba(156, 195, 168, 0.08)" : "rgba(217, 105, 78, 0.08)",
-                        }}
-                      >
-                        {accessible ? `✓ ${doc.classification}` : `🔒 ${doc.classification}`}
-                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "11px",
+                            color: accessible ? "var(--sage)" : "var(--coral-text)",
+                            border: `1px solid ${accessible ? "var(--sage)" : "var(--coral)"}`,
+                            padding: "1px 8px",
+                            borderRadius: "var(--radius-pill)",
+                            background: accessible ? "rgba(156, 195, 168, 0.08)" : "rgba(217, 105, 78, 0.08)",
+                          }}
+                        >
+                          {accessible ? `✓ ${doc.classification}` : `🔒 ${doc.classification}`}
+                        </span>
+                        <ReadAloudButton text={`${meta.title || doc.filename}. ${meta.subtext}`} compact />
+                      </div>
                     </div>
 
                     <h3 style={{ fontFamily: "var(--font-ui)", fontSize: "15px", fontWeight: 600, color: "var(--ink)", margin: 0 }}>
@@ -525,8 +554,8 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                       }}
                     >
                       <div style={{ display: "flex", gap: 10 }}>
-                        <span>Chunks: <strong style={{ color: "var(--ink)" }}>{doc.chunks_count}</strong></span>
-                        <span>Hash: <span style={{ color: "var(--brass)" }}>{doc.sha256_hash ? `${doc.sha256_hash.slice(0, 8)}...` : "SHA256"}</span></span>
+                        <span>{t("knowledgeChunksLabel")} <strong style={{ color: "var(--ink)" }}>{doc.chunks_count}</strong></span>
+                        <span>{t("knowledgeHashLabel")} <span style={{ color: "var(--brass)" }}>{doc.sha256_hash ? `${doc.sha256_hash.slice(0, 8)}...` : "SHA256"}</span></span>
                       </div>
 
                       <div style={{ display: "flex", gap: 6 }}>
@@ -541,7 +570,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                             cursor: accessible ? "pointer" : "not-allowed",
                           }}
                         >
-                          🔍 Open Reader
+                          {t("knowledgeOpenReader")}
                         </button>
                         <button
                           onClick={() => handleQuickIngest(doc.file_path, doc.classification as DataClassification)}
@@ -557,7 +586,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                             cursor: accessible ? "pointer" : "not-allowed",
                           }}
                         >
-                          {isIngesting ? "..." : "Re-Index ↺"}
+                          {isIngesting ? "..." : t("knowledgeReIndex")}
                         </button>
                       </div>
                     </div>
@@ -587,18 +616,21 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: "10.5px", color: "var(--brass)" }}>
                         {meta.category}
                       </span>
-                      <span
-                        style={{
-                          fontFamily: "var(--font-mono)",
-                          fontSize: "11px",
-                          color: accessible ? "var(--sage)" : "var(--coral-text)",
-                          border: `1px solid ${accessible ? "var(--sage)" : "var(--coral)"}`,
-                          padding: "1px 8px",
-                          borderRadius: "var(--radius-pill)",
-                        }}
-                      >
-                        {doc.classification}
-                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "11px",
+                            color: accessible ? "var(--sage)" : "var(--coral-text)",
+                            border: `1px solid ${accessible ? "var(--sage)" : "var(--coral)"}`,
+                            padding: "1px 8px",
+                            borderRadius: "var(--radius-pill)",
+                          }}
+                        >
+                          {doc.classification}
+                        </span>
+                        <ReadAloudButton text={`${meta.title || doc.filename}. ${meta.subtext}`} compact />
+                      </div>
                     </div>
 
                     <h3 style={{ fontFamily: "var(--font-ui)", fontSize: "15px", fontWeight: 600, color: "var(--ink)", margin: 0 }}>
@@ -617,14 +649,14 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                         color: "var(--ink-3)",
                       }}
                     >
-                      <span>Size: {(doc.size_bytes / 1024).toFixed(1)} KB</span>
+                      <span>{t("knowledgeSize")} {(doc.size_bytes / 1024).toFixed(1)} KB</span>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button
                           onClick={() => handleOpenReader(doc.filename)}
                           className="btn-brass-primary"
                           style={{ fontSize: "11px", padding: "4px 10px" }}
                         >
-                          🔍 Open Reader
+                          {t("knowledgeOpenReader")}
                         </button>
                         <button
                           onClick={() => handleQuickIngest(doc.file_path, doc.classification as DataClassification)}
@@ -639,7 +671,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                             padding: "4px 8px",
                           }}
                         >
-                          Index Now ↺
+                          {t("knowledgeIndexNow")}
                         </button>
                       </div>
                     </div>
@@ -648,7 +680,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
               })
             ) : (
               <div style={{ padding: "20px", textAlign: "center", color: "var(--ink-3)" }}>
-                Loading plant technical documents...
+                {t("knowledgeNoDocs")}
               </div>
             )}
           </div>
@@ -799,7 +831,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", fontWeight: 600 }}>
-                          PASSAGE [{String(idx + 1).padStart(2, "0")}]
+                          {t("knowledgePassagePrefix")} [{String(idx + 1).padStart(2, "0")}]
                         </span>
                         <span style={{ fontFamily: "var(--font-mono)", fontSize: "10.5px", color: "var(--ink)", background: "var(--bg-2)", padding: "1px 6px", borderRadius: "var(--radius-sm)" }}>
                           {docName}
@@ -819,18 +851,18 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                           className="btn-brass-secondary"
                           style={{ fontSize: "10px", padding: "2px 8px" }}
                         >
-                          Inspect Document ↗
+                          {t("knowledgeInspectDocButton")}
                         </button>
                       </div>
                     </div>
 
                     {/* Section & Asset Association */}
                     <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontFamily: "var(--font-mono)", fontSize: "10.5px", color: "var(--ink-3)" }}>
-                      <span>Section: <strong style={{ color: "var(--ink-2)" }}>{section}</strong></span>
+                      <span>{t("knowledgeSection")} <strong style={{ color: "var(--ink-2)" }}>{section}</strong></span>
                       <span>·</span>
-                      <span>Asset: <strong style={{ color: "var(--brass)" }}>{asset}</strong></span>
+                      <span>{t("knowledgeAsset")} <strong style={{ color: "var(--brass)" }}>{asset}</strong></span>
                       <span>·</span>
-                      <span>Source: <span style={{ color: "var(--ink-3)" }}>{sourcePath}</span></span>
+                      <span>{t("knowledgeSource")} <span style={{ color: "var(--ink-3)" }}>{sourcePath}</span></span>
                     </div>
 
                     <p
@@ -859,8 +891,8 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                         color: "var(--ink-3)",
                       }}
                     >
-                      <span>Doc ID: {r.chunk.document_id}</span>
-                      <span>Chunk ID: {r.chunk.chunk_id}</span>
+                      <span>{t("knowledgeDocId")} {r.chunk.document_id}</span>
+                      <span>{t("knowledgeChunkId")} {r.chunk.chunk_id}</span>
                     </div>
                   </div>
                 );
@@ -869,13 +901,13 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
           ) : searchResults && searchResults.results.length === 0 ? (
             <div style={{ padding: "40px 20px", textAlign: "center", background: "var(--bg-0)", border: "1px solid var(--line)", borderRadius: "var(--radius-panel)" }}>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--coral-text)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-                NO MATCHING RECORDS FOUND
+                {t("knowledgeNoMatchesTitle")}
               </div>
               <h3 style={{ fontFamily: "var(--font-display)", fontSize: "20px", color: "var(--ink)", marginBottom: 8, fontWeight: 500 }}>
-                No records matched &ldquo;{searchQuery}&rdquo;
+                {t("knowledgeNoMatchesHeading")} &ldquo;{searchQuery}&rdquo;
               </h3>
               <p style={{ fontFamily: "var(--font-ui)", fontSize: "13.5px", color: "var(--ink-2)", maxWidth: "48ch", margin: "0 auto 16px" }}>
-                Zero document chunks met the semantic threshold under clearance level <strong>{clearance}</strong>. Check spelling or try a broader search query.
+                {t("knowledgeNoMatchesDesc").replace("{clearance}", clearance)}
               </p>
               <button
                 type="button"
@@ -886,16 +918,16 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                 className="btn-brass-secondary"
                 style={{ fontSize: "12px", padding: "6px 14px" }}
               >
-                Reset to default query: Reactor R-204 operating pressure ↺
+                {t("knowledgeResetSearch")}
               </button>
             </div>
           ) : (
             <div style={{ padding: "48px 24px", textAlign: "center", color: "var(--ink-3)" }}>
               <p style={{ fontFamily: "var(--font-display)", fontSize: "20px", color: "var(--ink-2)", marginBottom: 6 }}>
-                Ready to search plant records
+                {t("knowledgeReadyTitle")}
               </p>
               <p style={{ fontFamily: "var(--font-ui)", fontSize: "13px" }}>
-                Ask any operational question or select a suggestion above to inspect sovereign vector retrievals.
+                {t("knowledgeReadyDesc")}
               </p>
             </div>
           )}
@@ -945,9 +977,9 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <BrassLabel variant="solid">DOCUMENT READER</BrassLabel>
+                <BrassLabel variant="solid">{t("knowledgeDocReaderTag")}</BrassLabel>
                 <h2 style={{ fontFamily: "var(--font-ui)", fontSize: "16px", fontWeight: 600, color: "var(--ink)", margin: 0 }}>
-                  {readerDoc?.filename || "Loading Document..."}
+                  {readerDoc?.filename || t("knowledgeLoadingDoc")}
                 </h2>
               </div>
               <button
@@ -982,11 +1014,11 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
               >
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   <span>
-                    Classification: <strong style={{ color: "var(--brass)" }}>{readerDoc.classification}</strong>
+                    {t("knowledgeClassification")} <strong style={{ color: "var(--brass)" }}>{readerDoc.classification}</strong>
                   </span>
                   <span>·</span>
                   <span>
-                    OCR Status:{" "}
+                    {t("knowledgeOcrStatus")}{" "}
                     <strong
                       style={{
                         color: readerDoc.ocr_status === "EXTRACTED" ? "var(--sage)" : "var(--coral-text)",
@@ -997,13 +1029,13 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                   </span>
                   <span>·</span>
                   <span>
-                    Chunks: <strong style={{ color: "var(--ink)" }}>{readerDoc.chunks_count}</strong>
+                    {t("knowledgeChunksLabel")}: <strong style={{ color: "var(--ink)" }}>{readerDoc.chunks_count}</strong>
                   </span>
                 </div>
 
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                   <span style={{ color: "var(--ink-3)" }}>
-                    SHA-256: {readerDoc.content_hash.slice(0, 16)}...
+                    {t("knowledgeHashLabel")}: {readerDoc.content_hash.slice(0, 16)}...
                   </span>
                   <ReadAloudButton text={readerDoc.extracted_text.slice(0, 2000)} compact />
                   <div style={{ display: "flex", gap: 4 }}>
@@ -1019,7 +1051,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                         cursor: "pointer",
                       }}
                     >
-                      Full Text
+                      {t("knowledgeFullText")}
                     </button>
                     <button
                       onClick={() => setReaderViewTab("chunks")}
@@ -1033,7 +1065,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                         cursor: "pointer",
                       }}
                     >
-                      Chunks ({readerDoc.chunks.length})
+                      {t("knowledgeChunksLabel")} ({readerDoc.chunks.length})
                     </button>
                   </div>
                 </div>
@@ -1044,7 +1076,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
             <div style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
               {isLoadingReader ? (
                 <div style={{ textAlign: "center", padding: "40px", color: "var(--ink-3)" }}>
-                  Extracting and verifying document content on sovereign storage...
+                  {t("knowledgeExtractingDoc")}
                 </div>
               ) : readerError ? (
                 <div
@@ -1130,7 +1162,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                 className="btn-brass-secondary"
                 style={{ fontSize: "12px", padding: "6px 14px" }}
               >
-                Close Reader
+                {t("knowledgeUploadModalClose")}
               </button>
             </div>
           </div>
@@ -1181,7 +1213,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <BrassLabel variant="solid">LOCAL INGESTION</BrassLabel>
                 <h2 style={{ fontFamily: "var(--font-ui)", fontSize: "16px", fontWeight: 600, color: "var(--ink)", margin: 0 }}>
-                  Upload Plant Document
+                  {t("knowledgeUploadModalTitle")}
                 </h2>
               </div>
               <button
@@ -1202,7 +1234,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
             <form onSubmit={handleUploadSubmit} style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
                 <label style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", marginBottom: 6 }}>
-                  DOCUMENT FILE (.PDF, .TXT, .MD — MAX 25MB)
+                  {t("knowledgeUploadModalDrop")}
                 </label>
                 <input
                   type="file"
@@ -1225,7 +1257,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
                   <label style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", marginBottom: 6 }}>
-                    CLASSIFICATION LEVEL
+                    {t("knowledgeUploadModalClass")}
                   </label>
                   <select
                     value={uploadClassification}
@@ -1335,7 +1367,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                   className="btn-brass-secondary"
                   style={{ fontSize: "12px", padding: "8px 16px" }}
                 >
-                  Cancel
+                  {t("knowledgeUploadModalClose")}
                 </button>
                 <button
                   type="submit"
@@ -1343,7 +1375,7 @@ export function KnowledgeView({ clearance }: KnowledgeViewProps) {
                   className="btn-brass-primary"
                   style={{ fontSize: "12px", padding: "8px 20px" }}
                 >
-                  {isUploading ? "Ingesting & Indexing..." : "Ingest Document ▶"}
+                  {isUploading ? t("knowledgeRefreshing") : t("knowledgeUploadModalSubmit")}
                 </button>
               </div>
             </form>

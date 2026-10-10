@@ -1,21 +1,37 @@
-"""Typed concepts and data structures for the FORGE Security and Policy Layer."""
-
-from enum import Enum
+from enum import Enum, EnumMeta
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
-class Role(str, Enum):
+class RoleMeta(EnumMeta):
+    """Metaclass to safely map any legacy role queries strictly to canonical roles."""
+    def __getattr__(cls, name: str) -> Any:
+        if name in ("ADMIN", "SECURITY_OFFICER"):
+            return cls.ADMINISTRATOR
+        if name == "INSPECTOR":
+            return cls.ENGINEER
+        if name in ("MANAGER", "AUDITOR", "AI_OPERATOR"):
+            return cls.VIEWER
+        return super().__getattr__(name)
+
+
+class Role(str, Enum, metaclass=RoleMeta):
     """Sovereign Industrial System Roles."""
     VIEWER = "VIEWER"
     ENGINEER = "ENGINEER"
-    ADMIN = "ADMIN"
     ADMINISTRATOR = "ADMINISTRATOR"
-    INSPECTOR = "INSPECTOR"
-    MANAGER = "MANAGER"
-    AUDITOR = "AUDITOR"
-    AI_OPERATOR = "AI_OPERATOR"
-    SECURITY_OFFICER = "SECURITY_OFFICER"
+
+    @classmethod
+    def _missing_(cls, value: object):
+        if isinstance(value, str):
+            val_upper = value.upper()
+            if val_upper in ("ADMIN", "SECURITY_OFFICER"):
+                return cls.ADMINISTRATOR
+            if val_upper == "INSPECTOR":
+                return cls.ENGINEER
+            if val_upper in ("MANAGER", "AUDITOR", "AI_OPERATOR"):
+                return cls.VIEWER
+        return None
 
 
 class DataClassification(str, Enum):

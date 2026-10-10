@@ -43,15 +43,21 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
     };
   }, []);
 
-  const permissionMatrix = Object.values(ROLE_PERMISSIONS).map((p) => ({
-    role: p.role,
-    clearance: p.defaultClearance,
-    read: p.read === "ALLOWED" ? "✓ Allowed" : "✕ Blocked",
-    investigate: p.investigate === "ALLOWED" ? "✓ Allowed" : "✕ Blocked",
-    actuate: p.actuate === "ALLOWED" ? "✓ Allowed" : p.actuate === "NEEDS_APPROVAL" ? "⚠ Approval required" : "✕ Blocked",
-    admin: p.admin === "ALLOWED" ? "✓ Allowed" : p.admin === "NEEDS_APPROVAL" ? "⚠ Approval required" : "✕ Blocked",
-    summary: p.summary,
-  }));
+  const permissionMatrix = Object.values(ROLE_PERMISSIONS).map((p) => {
+    let localizedSummary = p.summary;
+    if (p.role === "VIEWER") localizedSummary = t("roleViewerSummary");
+    else if (p.role === "ENGINEER") localizedSummary = t("roleEngineerSummary");
+    else if (p.role === "ADMINISTRATOR") localizedSummary = t("roleAdminSummary");
+    return {
+      role: p.role,
+      clearance: p.defaultClearance,
+      read: p.read === "ALLOWED" ? t("govStatusAllowed") : t("govStatusBlocked"),
+      investigate: p.investigate === "ALLOWED" ? t("govStatusAllowed") : t("govStatusBlocked"),
+      actuate: p.actuate === "ALLOWED" ? t("govStatusAllowed") : p.actuate === "NEEDS_APPROVAL" ? t("govStatusApproval") : t("govStatusBlocked"),
+      admin: p.admin === "ALLOWED" ? t("govStatusAllowed") : p.admin === "NEEDS_APPROVAL" ? t("govStatusApproval") : t("govStatusBlocked"),
+      summary: localizedSummary,
+    };
+  });
 
   const getStatusBadge = (status: string) => {
     if (status.includes("✓ Allowed") || status.includes("Allowed") || status.includes("अनुमत") || status.includes("ಅನುಮತಿಸಲಾಗಿದೆ")) {
@@ -80,7 +86,7 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
       {/* Editorial Header */}
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-          <BrassLabel variant="outline">AUTHORITY LEDGER</BrassLabel>
+          <BrassLabel variant="outline">{t("govLedgerTag")}</BrassLabel>
           <span
             style={{
               fontFamily: "var(--font-mono)",
@@ -92,7 +98,7 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
               border: "1px solid var(--coral)",
             }}
           >
-            DEFAULT-DENY ENFORCED
+            {t("govDefaultDenyTag")}
           </span>
           <span
             style={{
@@ -106,7 +112,7 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
               fontWeight: 600,
             }}
           >
-            SECURITY TESTS: 10 / 10 PASSED
+            {t("govSecurityTestsPassed")}
           </span>
         </div>
 
@@ -160,13 +166,14 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--brass)", letterSpacing: "0.06em" }}>
-              PERMISSION MATRIX
+              {t("govMatrixTitle")}
             </span>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "24px", color: "var(--ink)", margin: "4px 0" }}>
-              Role Permissions Matrix
+              {t("govPermissionMatrixTitle")}
             </h2>
             <p style={{ fontFamily: "var(--font-ui)", fontSize: "14px", color: "var(--ink-2)" }}>
-              Current active persona: <strong style={{ color: "var(--brass)" }}>{role}</strong>. Switching personas in the header updates your execution boundaries instantly.
+              {t("govActivePersonaPrefix")}{" "}
+              <strong style={{ color: "var(--brass)" }}>{role}</strong>. {t("govActivePersonaSub")}
             </p>
           </div>
 
@@ -185,7 +192,7 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
             }}
           >
             <span>Policy Gateway:</span>
-            <strong>ACTIVE & ENFORCING</strong>
+            <strong>{t("govGatewayActive")}</strong>
           </div>
         </div>
 
@@ -228,9 +235,10 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
                               background: "rgba(200, 161, 90, 0.12)",
                             }}
                           >
-                            YOU
+                            {t("govYouBadge")}
                           </span>
                         )}
+                        <ReadAloudButton text={`Role ${p.role}. Clearance: ${p.clearance}. Operational Boundary: ${p.summary}`} compact />
                       </div>
                     </td>
                     <td style={{ padding: "14px 14px" }}>{getStatusBadge(p.read)}</td>
@@ -281,10 +289,10 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
           </div>
           <div>
             <div style={{ fontFamily: "var(--font-display)", fontSize: "18px", color: "var(--ink)", fontWeight: 600 }}>
-              Security tests: 10 / 10 passed
+              {t("govSecTestCardTitle")}
             </div>
             <div style={{ fontFamily: "var(--font-ui)", fontSize: "13px", color: "var(--ink-2)", marginTop: 2 }}>
-              Deterministic boundary tests verify untrusted inputs are quarantined and unauthorized actions are blocked.
+              {t("govSecTestCardDesc")}
             </div>
           </div>
         </div>
@@ -294,7 +302,7 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
           className="btn-brass-secondary"
           style={{ fontSize: "12px", padding: "8px 16px" }}
         >
-          {showTechnicalDetails ? "Hide Technical Details ▲" : "View Technical Policy Details ▼"}
+          {showTechnicalDetails ? t("govHideTechnicalBtn") : t("govViewTechnicalBtn")}
         </button>
       </div>
 
@@ -305,32 +313,32 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
       {/* 2. Tool Authority & Default-Deny Registry */}
       <EnamelSurface variant="base" padding="spacious">
         <SectionHeader
-          title="Tool authority"
-          eyebrow="Industrial Execution Sandboxes"
-          description="Registered industrial tools, risk tiers, and required clearances. Unregistered tools default to strict DENY."
+          title={t("govToolAuthTitle")}
+          eyebrow={t("govToolAuthEyebrow")}
+          description={t("govToolAuthDesc")}
         />
 
         <div style={{ overflowX: "auto", marginTop: 20 }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-ui)", fontSize: "14px", textAlign: "left" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--line-strong)", color: "var(--ink-3)" }}>
-                <th style={{ padding: "12px 14px", fontWeight: 500 }}>Tool Name</th>
-                <th style={{ padding: "12px 14px", fontWeight: 500 }}>Identifier</th>
-                <th style={{ padding: "12px 14px", fontWeight: 500 }}>Risk Tier</th>
-                <th style={{ padding: "12px 14px", fontWeight: 500 }}>Required Persona</th>
-                <th style={{ padding: "12px 14px", fontWeight: 500 }}>Supervisor Approval</th>
-                <th style={{ padding: "12px 14px", fontWeight: 500 }}>Policy Action</th>
+                <th style={{ padding: "12px 14px", fontWeight: 500 }}>{t("govToolColName")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 500 }}>{t("govToolColId")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 500 }}>{t("govToolColTier")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 500 }}>{t("govToolColPersona")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 500 }}>{t("govToolColApproval")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 500 }}>{t("govToolColAction")}</th>
               </tr>
             </thead>
             <tbody>
-              {tools.map((t, idx) => {
-                const isCritical = t.risk_level === "CRITICAL";
-                const isHigh = t.risk_level === "HIGH";
+              {tools.map((tItem, idx) => {
+                const isCritical = tItem.risk_level === "CRITICAL";
+                const isHigh = tItem.risk_level === "HIGH";
                 return (
                   <tr key={idx} style={{ borderBottom: "1px solid var(--line)" }}>
-                    <td style={{ padding: "14px 14px", fontWeight: 500, color: "var(--ink)" }}>{t.name}</td>
+                    <td style={{ padding: "14px 14px", fontWeight: 500, color: "var(--ink)" }}>{tItem.name}</td>
                     <td style={{ padding: "14px 14px", fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--brass)" }}>
-                      {t.name.toLowerCase().replace(/\s+/g, "_")}
+                      {tItem.name.toLowerCase().replace(/\s+/g, "_")}
                     </td>
                     <td style={{ padding: "14px 14px" }}>
                       <span
@@ -341,27 +349,27 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
                           color: isCritical ? "var(--coral-text)" : isHigh ? "var(--brass)" : "var(--sage)",
                         }}
                       >
-                        {t.risk_level}
+                        {tItem.risk_level}
                       </span>
                     </td>
-                    <td style={{ padding: "14px 14px", color: "var(--ink)" }}>{t.required_role}</td>
-                    <td style={{ padding: "14px 14px", color: t.requires_approval ? "var(--brass)" : "var(--ink-3)" }}>
-                      {t.requires_approval ? "Supervisor approval required" : "Autonomous allowed"}
+                    <td style={{ padding: "14px 14px", color: "var(--ink)" }}>{tItem.required_role}</td>
+                    <td style={{ padding: "14px 14px", color: tItem.requires_approval ? "var(--brass)" : "var(--ink-3)" }}>
+                      {tItem.requires_approval ? t("govToolApprovalReq") : t("govToolAutoAllowed")}
                     </td>
                     <td style={{ padding: "14px 14px", fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--sage)" }}>
-                      Gated by Gateway
+                      {t("govToolGated")}
                     </td>
                   </tr>
                 );
               })}
               <tr style={{ borderBottom: "1px solid var(--line)", background: "rgba(141, 180, 214, 0.04)" }}>
-                <td style={{ padding: "14px 14px", fontWeight: 600, color: "var(--pewter)" }}>Unregistered tools</td>
+                <td style={{ padding: "14px 14px", fontWeight: 600, color: "var(--pewter)" }}>{t("govToolUnregistered")}</td>
                 <td style={{ padding: "14px 14px", fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--pewter)" }}>*</td>
                 <td style={{ padding: "14px 14px", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--pewter)", fontWeight: 600 }}>RESTRICTED</td>
                 <td style={{ padding: "14px 14px", color: "var(--pewter)" }}>None</td>
-                <td style={{ padding: "14px 14px", color: "var(--pewter)", fontWeight: 500 }}>Blocked</td>
+                <td style={{ padding: "14px 14px", color: "var(--pewter)", fontWeight: 500 }}>{t("govStatusBlocked")}</td>
                 <td style={{ padding: "14px 14px", fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--coral-text)", fontWeight: 600 }}>
-                  DEFAULT DENY (FAIL-CLOSED)
+                  {t("govToolDefaultDeny")}
                 </td>
               </tr>
             </tbody>
@@ -372,9 +380,9 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
       {/* 3. Adversarial Proofs (10 / 10 Passed) */}
       <EnamelSurface variant="base" padding="spacious">
         <SectionHeader
-          title="Adversarial proofs"
-          eyebrow="Proof of Enforcement"
-          description="Deterministic boundary tests verifying that malicious inputs, unprivileged calls, and prompt injections are quarantined or blocked without exception."
+          title={t("govAdvProofsTitle")}
+          eyebrow={t("govAdvProofsEyebrow")}
+          description={t("govAdvProofsDesc")}
           action={
             <div
               style={{
@@ -397,11 +405,11 @@ export function GovernanceView({ role = "ENGINEER" }: GovernanceViewProps) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-ui)", fontSize: "13px", textAlign: "left" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--line-strong)", color: "var(--ink-3)" }}>
-                <th style={{ padding: "12px 14px", fontWeight: 500 }}>Proof ID</th>
-                <th style={{ padding: "12px 14px", fontWeight: 500 }}>Attack Category & Vector</th>
-                <th style={{ padding: "12px 14px", fontWeight: 500 }}>Boundary Under Test</th>
-                <th style={{ padding: "12px 14px", fontWeight: 500 }}>Enforcement State</th>
-                <th style={{ padding: "12px 14px", fontWeight: 500 }}>Verification Outcome</th>
+                <th style={{ padding: "12px 14px", fontWeight: 500 }}>{t("govProofColId")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 500 }}>{t("govProofColCat")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 500 }}>{t("govProofColBound")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 500 }}>{t("govProofColEnforce")}</th>
+                <th style={{ padding: "12px 14px", fontWeight: 500 }}>{t("govProofColOutcome")}</th>
               </tr>
             </thead>
             <tbody>

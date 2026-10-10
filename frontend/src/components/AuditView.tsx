@@ -191,44 +191,44 @@ export function AuditView() {
 
     if (evt.type.includes("QUERY") || (evt.category === "AGENT" && evt.type.includes("START"))) {
       return {
-        humanTitle: "Question received from operator",
-        explanation: "Operator submitted an industrial telemetry or procedure inquiry to the sovereign control plane.",
+        humanTitle: t("auditEvtQuestionTitle"),
+        explanation: t("auditEvtQuestionDesc"),
       };
     }
     if (evt.category === "KNOWLEDGE") {
       return {
-        humanTitle: "Plant records consulted",
-        explanation: "Sovereign local vector search retrieved private operating procedures within clearance bounds.",
+        humanTitle: t("auditEvtRecordsTitle"),
+        explanation: t("auditEvtRecordsDesc"),
       };
     }
     if (evt.category === "POLICY") {
       if (isDenied) {
         return {
-          humanTitle: "Permission checked → BLOCKED",
-          explanation: `FORGE verified ${evt.role} permissions and blocked the requested action before execution.`,
+          humanTitle: t("auditEvtPermBlockedTitle"),
+          explanation: t("auditEvtPermBlockedDesc").replace("{role}", evt.role),
         };
       }
       return {
-        humanTitle: "Permission checked → Allowed",
-        explanation: `Action validated against policy rules for ${evt.role} role clearance.`,
+        humanTitle: t("auditEvtPermAllowedTitle"),
+        explanation: t("auditEvtPermAllowedDesc").replace("{role}", evt.role),
       };
     }
     if (evt.category === "TOOL") {
       if (isDenied) {
         return {
-          humanTitle: "Tool execution blocked",
-          explanation: "Policy gateway prevented tool dispatch. Sandboxed code executed: 0 times.",
+          humanTitle: t("auditEvtToolBlockedTitle"),
+          explanation: t("auditEvtToolBlockedDesc"),
         };
       }
       return {
-        humanTitle: "Tool allowed & executed",
-        explanation: "Industrial tool executed inside local sandboxed environment with verified arguments.",
+        humanTitle: t("auditEvtToolAllowedTitle"),
+        explanation: t("auditEvtToolAllowedDesc"),
       };
     }
     if (evt.category === "VERIFICATION") {
       return {
-        humanTitle: "Answer verified independently",
-        explanation: "Deterministic Python checks evaluated calculations, consistency, and grounding.",
+        humanTitle: t("auditEvtVerifiedTitle"),
+        explanation: t("auditEvtVerifiedDesc"),
       };
     }
     return {
@@ -244,9 +244,9 @@ export function AuditView() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-              <BrassLabel variant="outline">ACTIVITY TIMELINE</BrassLabel>
+              <BrassLabel variant="outline">{t("auditActivityTag")}</BrassLabel>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-                FORENSIC LOG
+                {t("auditForensicLogTag")}
               </span>
               <span
                 style={{
@@ -259,7 +259,7 @@ export function AuditView() {
                   border: "1px solid var(--sage)",
                 }}
               >
-                LOCAL APPEND-ONLY AUDIT
+                {t("auditAppendOnlyTag")}
               </span>
             </div>
 
@@ -290,7 +290,7 @@ export function AuditView() {
               className="btn-brass-secondary"
               style={{ fontSize: "12px", padding: "6px 14px" }}
             >
-              {isLoading ? "Refreshing..." : "↻ Refresh Activity"}
+              {isLoading ? t("auditRefreshing") : t("auditRefresh")}
             </button>
           </div>
         </div>
@@ -335,7 +335,7 @@ export function AuditView() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <span style={{ color: "var(--sage)", fontSize: "12px" }}>✓</span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--sage)", fontWeight: 600 }}>
-                NORMAL INVESTIGATION (ALLOWED)
+                {t("auditNormalFlowTitle")}
               </span>
             </div>
             <div
@@ -346,12 +346,12 @@ export function AuditView() {
                 lineHeight: 1.8,
               }}
             >
-              Question received<br />
-              <span style={{ color: "var(--ink-3)" }}>↓</span> Plant records consulted<br />
-              <span style={{ color: "var(--ink-3)" }}>↓</span> Permission checked<br />
-              <span style={{ color: "var(--ink-3)" }}>↓</span> Tool allowed<br />
-              <span style={{ color: "var(--ink-3)" }}>↓</span> Calculation performed<br />
-              <span style={{ color: "var(--sage)" }}>↓ Answer verified</span>
+              {t("auditNormalFlow1")}<br />
+              <span style={{ color: "var(--ink-3)" }}>↓</span> {t("auditNormalFlow2")}<br />
+              <span style={{ color: "var(--ink-3)" }}>↓</span> {t("auditNormalFlow3")}<br />
+              <span style={{ color: "var(--ink-3)" }}>↓</span> {t("auditNormalFlow4")}<br />
+              <span style={{ color: "var(--ink-3)" }}>↓</span> {t("auditNormalFlow5")}<br />
+              <span style={{ color: "var(--sage)" }}>↓ {t("auditNormalFlow6")}</span>
             </div>
           </div>
 
@@ -366,7 +366,7 @@ export function AuditView() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <span style={{ color: "var(--coral)", fontSize: "12px" }}>✕</span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--coral-text)", fontWeight: 600 }}>
-                UNAUTHORIZED ACTUATION (BLOCKED)
+                {t("auditBlockedFlowTitle")}
               </span>
             </div>
             <div
@@ -377,10 +377,10 @@ export function AuditView() {
                 lineHeight: 1.8,
               }}
             >
-              Question received<br />
-              <span style={{ color: "var(--ink-3)" }}>↓</span> Permission checked<br />
-              <span style={{ color: "var(--coral-text)", fontWeight: 600 }}>↓ BLOCKED</span><br />
-              <span style={{ color: "var(--ink-3)" }}>↓ Tool never executed</span>
+              {t("auditBlockedFlow1")}<br />
+              <span style={{ color: "var(--ink-3)" }}>↓</span> {t("auditBlockedFlow2")}<br />
+              <span style={{ color: "var(--coral-text)", fontWeight: 600 }}>↓ {t("auditBlockedFlow3")}</span><br />
+              <span style={{ color: "var(--ink-3)" }}>↓ {t("auditBlockedFlow4")}</span>
             </div>
           </div>
         </div>
@@ -399,49 +399,49 @@ export function AuditView() {
         >
           <div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              TOTAL RECORDED EVENTS
+              {t("auditKpiTotal")}
             </span>
             <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", color: "var(--brass)", fontWeight: 600, marginTop: 2 }}>
               {totalEventsCount}
             </div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              Agent traces: {auditData?.total_agent_events || 0}
+              {t("auditKpiAgent")}: {auditData?.total_agent_events || 0}
             </span>
           </div>
 
           <div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              TOOL & POLICY EXECUTIONS
+              {t("auditKpiTool")}
             </span>
             <div style={{ fontFamily: "var(--font-display)", fontSize: "28px", color: "var(--sage)", fontWeight: 600, marginTop: 2 }}>
               {auditData?.total_tool_events || 0}
             </div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              Gateway mediated
+              {t("auditKpiGateway")}
             </span>
           </div>
 
           <div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              AUDIT STORAGE MODE
+              {t("auditKpiStorage")}
             </span>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: "13px", color: "var(--ink)", fontWeight: 600, marginTop: 8 }}>
-              LOCAL APPEND-ONLY SINK
+              {t("auditKpiStorageVal")}
             </div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              Local memory & file store
+              {t("auditKpiStorageSub")}
             </span>
           </div>
 
           <div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              OUTSIDE AI SERVICES
+              {t("auditKpiOutside")}
             </span>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: "13px", color: "var(--sage)", fontWeight: 600, marginTop: 8 }}>
-              NONE CONFIGURED
+              {t("auditKpiOutsideVal")}
             </div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              Loopback inference only
+              {t("auditKpiOutsideSub")}
             </span>
           </div>
         </div>
@@ -470,7 +470,7 @@ export function AuditView() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--brass)", letterSpacing: "0.06em" }}>
-              FORENSIC SPINE ({filteredEvents.length} EVENTS)
+              {t("auditSpineTag")} ({filteredEvents.length} {t("auditEventsCount")})
             </span>
           </div>
 
@@ -574,7 +574,7 @@ export function AuditView() {
                           cursor: "pointer",
                         }}
                       >
-                        {isExpanded ? "Close JSON ▲" : "Inspect JSON ▼"}
+                        {isExpanded ? t("auditJsonClose") : t("auditJsonInspect")}
                       </button>
                     </div>
                   </div>
@@ -604,26 +604,26 @@ export function AuditView() {
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                       <span>
-                        Actor: <strong style={{ color: "var(--ink-2)" }}>{evt.actor}</strong> ({evt.role})
+                        {t("auditActor")}: <strong style={{ color: "var(--ink-2)" }}>{evt.actor}</strong> ({evt.role})
                       </span>
                       {evt.runId && (
                         <span>
-                          Run ID: <strong style={{ color: "var(--brass)" }}>{evt.runId}</strong>
+                          {t("auditRunId")}: <strong style={{ color: "var(--brass)" }}>{evt.runId}</strong>
                         </span>
                       )}
                       {evt.tool && (
                         <span>
-                          Tool: <strong style={{ color: "var(--sage)" }}>{evt.tool}</strong>
+                          {t("auditTool")}: <strong style={{ color: "var(--sage)" }}>{evt.tool}</strong>
                         </span>
                       )}
                       {evt.scenarioId && (
                         <span>
-                          Scenario: <strong style={{ color: "var(--ink)" }}>{evt.scenarioId}</strong>
+                          {t("auditScenario")}: <strong style={{ color: "var(--ink)" }}>{evt.scenarioId}</strong>
                         </span>
                       )}
                     </div>
                     <span>
-                      Event ID: {evt.id}
+                      {t("auditEventId")}: {evt.id}
                     </span>
                   </div>
 
@@ -640,7 +640,7 @@ export function AuditView() {
                       }}
                     >
                       <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", marginBottom: 4 }}>
-                        TECHNICAL PAYLOAD INSPECTOR:
+                        {t("auditJsonTitle")}:
                       </div>
                       <pre
                         style={{

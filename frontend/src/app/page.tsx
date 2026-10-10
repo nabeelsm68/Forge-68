@@ -304,7 +304,7 @@ export default function Home() {
             2. LIBRARY DESTINATION
             ========================================================================= */}
         {destination === "library" && (
-          <KnowledgeView clearance={clearance} />
+          <KnowledgeView clearance={clearance} role={role} />
         )}
 
         {/* =========================================================================

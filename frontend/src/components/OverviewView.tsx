@@ -20,6 +20,7 @@ import {
   Divider,
 } from "@/components/primitives";
 import { useTranslation } from "@/lib/i18n";
+import { ReadAloudButton } from "@/components/ReadAloudButton";
 
 interface OverviewViewProps {
   onNavigateToWorkspace: () => void;
@@ -84,19 +85,22 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
               </span>
             </div>
 
-            <h1
-              style={{
-                fontFamily: "var(--font-display)",
-                fontWeight: 500,
-                fontSize: "clamp(28px, 3.2vw, 42px)",
-                lineHeight: 1.1,
-                color: "var(--ink)",
-                letterSpacing: "-0.01em",
-                marginBottom: 10,
-              }}
-            >
-              {t("overviewHeading")}
-            </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+              <h1
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 500,
+                  fontSize: "clamp(28px, 3.2vw, 42px)",
+                  lineHeight: 1.1,
+                  color: "var(--ink)",
+                  letterSpacing: "-0.01em",
+                  margin: 0,
+                }}
+              >
+                {t("overviewHeading")}
+              </h1>
+              <ReadAloudButton text={`${t("overviewHeading")}. ${t("overviewSubheading")}`} />
+            </div>
 
             <p
               style={{
@@ -244,17 +248,20 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
             </span>
           </div>
 
-          <h3
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "20px",
-              color: "var(--ink)",
-              marginBottom: 8,
-              fontWeight: 500,
-            }}
-          >
-            {t("overviewLayer1Heading")}
-          </h3>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
+            <h3
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "20px",
+                color: "var(--ink)",
+                margin: 0,
+                fontWeight: 500,
+              }}
+            >
+              {t("overviewLayer1Heading")}
+            </h3>
+            <ReadAloudButton text={`${t("overviewLayer1Heading")}. ${t("overviewLayer1Desc")}`} compact />
+          </div>
 
           <p style={{ fontFamily: "var(--font-ui)", fontSize: "13.5px", color: "var(--ink-2)", lineHeight: 1.5, marginBottom: 14 }}>
             {t("overviewLayer1Desc")}
@@ -319,17 +326,20 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
             </span>
           </div>
 
-          <h3
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "20px",
-              color: "var(--ink)",
-              marginBottom: 8,
-              fontWeight: 500,
-            }}
-          >
-            {t("overviewLayer2Heading")}
-          </h3>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
+            <h3
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "20px",
+                color: "var(--ink)",
+                margin: 0,
+                fontWeight: 500,
+              }}
+            >
+              {t("overviewLayer2Heading")}
+            </h3>
+            <ReadAloudButton text={`${t("overviewLayer2Heading")}. ${t("overviewLayer2Desc")}`} compact />
+          </div>
 
           <p style={{ fontFamily: "var(--font-ui)", fontSize: "13.5px", color: "var(--ink-2)", lineHeight: 1.5, marginBottom: 14 }}>
             {t("overviewLayer2Desc")}
@@ -392,17 +402,20 @@ export function OverviewView({ onNavigateToWorkspace }: OverviewViewProps) {
             <StatusIndicator status="verified" label="Enforced" />
           </div>
 
-          <h3
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "20px",
-              color: "var(--ink)",
-              marginBottom: 8,
-              fontWeight: 500,
-            }}
-          >
-            {t("overviewLayer3Heading")}
-          </h3>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
+            <h3
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "20px",
+                color: "var(--ink)",
+                margin: 0,
+                fontWeight: 500,
+              }}
+            >
+              {t("overviewLayer3Heading")}
+            </h3>
+            <ReadAloudButton text={`${t("overviewLayer3Heading")}. ${t("overviewLayer3Desc")}`} compact />
+          </div>
 
           <p style={{ fontFamily: "var(--font-ui)", fontSize: "13.5px", color: "var(--ink-2)", lineHeight: 1.5, marginBottom: 14 }}>
             {t("overviewLayer3Desc")}

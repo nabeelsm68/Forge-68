@@ -23,7 +23,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
   const baselineChecks = [
     {
       check_name: "PROVENANCE",
-      plainTitle: "Sources traceable",
+      plainTitle: t("verificationCheckProvPlain"),
       title: t("verificationCheckProvTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "All ingested document chunks, tool telemetry, and visual observations possess verifiable source references and SHA-256 digests.",
@@ -31,7 +31,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     },
     {
       check_name: "COMPLETENESS",
-      plainTitle: "Evidence complete",
+      plainTitle: t("verificationCheckCompPlain"),
       title: t("verificationCheckCompTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "Every reasoning claim in the agent's plan has corresponding backing records across knowledge, tooling, and sensor telemetry.",
@@ -39,7 +39,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     },
     {
       check_name: "POLICY",
-      plainTitle: "Within policy rules",
+      plainTitle: t("verificationCheckPolicyPlain"),
       title: t("verificationCheckPolicyTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "All requested operations evaluated against role clearance. Zero execution of unauthorized, critical-risk, or write-actuation tool handlers.",
@@ -47,7 +47,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     },
     {
       check_name: "CLASSIFICATION",
-      plainTitle: "Within your access",
+      plainTitle: t("verificationCheckClassPlain"),
       title: t("verificationCheckClassTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "Data classification levels respected. Requester clearance strictly subsumes retrieved document tiers.",
@@ -55,7 +55,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     },
     {
       check_name: "PARAMETER_CONSISTENCY",
-      plainTitle: "Values agree",
+      plainTitle: t("verificationCheckParamPlain"),
       title: t("verificationCheckParamTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "Operating readings and engineering baselines are compared across multiple sources. Variances are flagged for review.",
@@ -63,7 +63,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     },
     {
       check_name: "CALCULATION",
-      plainTitle: "Math independently checked",
+      plainTitle: t("verificationCheckCalcPlain"),
       title: t("verificationCheckCalcTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "All numerical variances and engineering calculations are calculated by pure Python code, not by the language model.",
@@ -71,7 +71,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
     },
     {
       check_name: "GROUNDING",
-      plainTitle: "Answer supported by evidence",
+      plainTitle: t("verificationCheckGroundPlain"),
       title: t("verificationCheckGroundTitle"),
       status: "VERIFIED" as VerificationStatus,
       description: "Response text is checked for factual grounding against verified evidence. Speculative assertions are purged.",
@@ -137,7 +137,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
       >
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <BrassLabel variant="outline">THE MODEL DOES NOT VERIFY ITSELF</BrassLabel>
+            <BrassLabel variant="outline">{t("verifNotSelfTag")}</BrassLabel>
             <span
               style={{
                 fontFamily: "var(--font-mono)",
@@ -149,7 +149,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
                 border: "1px solid var(--sage)",
               }}
             >
-              7 INDEPENDENT CODE CHECKS
+              {t("verifIndependentChecksTag")}
             </span>
           </div>
 
@@ -164,7 +164,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)", textTransform: "uppercase" }}>
-            Deterministic Verdict
+            {t("verifVerdictLabel")}
           </span>
           <VerdictBadge verdict={currentStatus} />
         </div>
@@ -185,11 +185,11 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", letterSpacing: "0.06em" }}>
-            VERIFICATION ASSESSMENT SUMMARY
+            {t("verifSummaryTag")}
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              Checks Evaluated: {activeChecks.length} / 7
+              {t("verifEvaluatedCount")} {activeChecks.length} / 7
             </span>
             <ReadAloudButton text={summaryText} compact />
           </div>
@@ -202,7 +202,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
         {verification?.conflicts && verification.conflicts.length > 0 && (
           <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--line)" }}>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", fontWeight: 600 }}>
-              Flagged Parameter Discrepancy:
+              {t("verifDiscrepancy")}
             </span>
             {verification.conflicts.map((c, i) => (
               <p key={i} style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--ink-2)", marginTop: 2 }}>
@@ -274,7 +274,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--brass)", letterSpacing: "0.06em" }}>
-                      CHECK {String(idx + 1).padStart(2, "0")}
+                      {t("verifCheckPrefix")} {String(idx + 1).padStart(2, "0")}
                     </span>
                     <span style={{ fontFamily: "var(--font-ui)", fontSize: "15px", fontWeight: 600, color: "var(--ink)" }}>
                       {chk.plainTitle}
@@ -299,6 +299,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
                     >
                       {chk.status === "VERIFIED" ? "PASS" : chk.status}
                     </span>
+                    <ReadAloudButton text={`${chk.plainTitle}. ${chk.title}. ${chk.description}`} compact />
                     <span style={{ color: "var(--ink-3)", fontSize: "12px" }}>
                       {isExpanded ? "▲" : "▼"}
                     </span>

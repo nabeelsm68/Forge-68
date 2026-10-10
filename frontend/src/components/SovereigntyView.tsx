@@ -88,32 +88,35 @@ export function SovereigntyView() {
     {
       technicalLabel: "01 LOCAL INFERENCE",
       title: t("sovCardLocalAITitle"),
-      badge: isModelLive ? "Live Sovereign Model" : "On-Premise Ready",
-      description: `Runs on-premise (${sovereignty?.model_provider.default_model || "qwen3:8b"} via ${sovereignty?.model_provider.type.toUpperCase() || "OLLAMA"}). No cloud AI, zero external API calls, zero cloud SDK dependencies.`,
+      badge: isModelLive ? t("sovCardLocalAIBadgeLive") : t("sovCardLocalAIBadgeReady"),
+      description: t("sovCardLocalAIDesc")
+        .replace("{model}", sovereignty?.model_provider.default_model || "qwen3:8b")
+        .replace("{provider}", sovereignty?.model_provider.type.toUpperCase() || "OLLAMA"),
     },
     {
       technicalLabel: "02 KNOWLEDGE FABRIC",
       title: t("sovCardLocalKnowledgeTitle"),
-      badge: "On-Premise Vector Enclave",
-      description: `Private plant documents indexed locally (${runtime.embeddingModel || sovereignty?.embedding_provider.model || "Local Embeddings"}). Zero cloud vector databases. Access strictly bounded by role clearance.`,
+      badge: t("sovCardKnowledgeBadge"),
+      description: t("sovCardKnowledgeDesc")
+        .replace("{model}", runtime.embeddingModel || sovereignty?.embedding_provider.model || "Local Embeddings"),
     },
     {
       technicalLabel: "03 CONTROLLED TOOLS",
       title: t("sovCardLocalToolsTitle"),
-      badge: "Bounded Execution",
-      description: "Industrial actuation, SCADA telemetry queries, and file operations execute inside local sandboxes. Policy gateway intercepts every call before execution.",
+      badge: t("sovCardToolsBadge"),
+      description: t("sovCardToolsDesc"),
     },
     {
       technicalLabel: "04 INDEPENDENT VERIFICATION",
       title: t("sovCardVerificationTitle"),
-      badge: "Deterministic Code Checks",
-      description: "7 discrete verification checks evaluate facts, unit bounds, and calculations using pure Python code. The AI model is never allowed to grade its own work.",
+      badge: t("sovCardVerifBadge"),
+      description: t("sovCardVerifDesc"),
     },
     {
       technicalLabel: "05 LOCAL AUDIT",
       title: t("sovCardAuditTitle"),
-      badge: "Append-Only Local Sink",
-      description: "Every question, reasoning trace, tool execution, and verification check is logged to an immutable local file sink. Data never leaves your facility.",
+      badge: t("sovCardAuditBadge"),
+      description: t("sovCardAuditDesc"),
     },
   ];
 
@@ -124,7 +127,7 @@ export function SovereigntyView() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 20 }}>
           <div style={{ maxWidth: 780 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-              <BrassLabel variant="outline">SOVEREIGNTY BOUNDARY</BrassLabel>
+              <BrassLabel variant="outline">{t("sovBoundaryTag")}</BrassLabel>
               <span
                 style={{
                   fontFamily: "var(--font-mono)",
@@ -136,10 +139,10 @@ export function SovereigntyView() {
                   border: "1px solid var(--sage)",
                 }}
               >
-                ON-PREMISE SOVEREIGN RUNTIME
+                {t("sovRuntimeTag")}
               </span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-                ENCLAVE ID: FORGE-SOV-01
+                {t("sovEnclaveId")}
               </span>
             </div>
 
@@ -162,7 +165,7 @@ export function SovereigntyView() {
               className="btn-brass-primary"
               style={{ fontSize: "13px", padding: "10px 18px" }}
             >
-              {isLoading ? "Verifying..." : "Verify Runtime State ↻"}
+              {isLoading ? t("sovVerifying") : t("sovVerifyBtn")}
             </button>
           </div>
         </div>
@@ -183,37 +186,37 @@ export function SovereigntyView() {
         >
           <div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              EXTERNAL AI PROVIDERS
+              {t("sovExtAi")}
             </span>
             <div style={{ fontFamily: "var(--font-display)", fontSize: "20px", color: "var(--sage)", fontWeight: 600, marginTop: 4 }}>
-              None configured
+              {t("sovExtAiVal")}
             </div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              Zero cloud LLM API calls or SDKs
+              {t("sovExtAiSub")}
             </span>
           </div>
 
           <div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              CLOUD FALLBACK
+              {t("sovCloudFallback")}
             </span>
             <div style={{ fontFamily: "var(--font-display)", fontSize: "20px", color: "var(--sage)", fontWeight: 600, marginTop: 4 }}>
-              Disabled (Fail-Closed)
+              {t("sovCloudFallbackVal")}
             </div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              Never fails over to public services
+              {t("sovCloudFallbackSub")}
             </span>
           </div>
 
           <div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              ADVERSARIAL BOUNDARY PROOFS
+              {t("sovAdvBoundary")}
             </span>
             <div style={{ fontFamily: "var(--font-display)", fontSize: "20px", color: "var(--sage)", fontWeight: 600, marginTop: 4 }}>
-              {securityReport ? `${securityReport.passed} / ${securityReport.total_tests} passed` : "10 / 10 passed"}
+              {securityReport ? `${securityReport.passed} / ${securityReport.total_tests}` : "10 / 10"}
             </div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--ink-3)" }}>
-              Security tests verified
+              {t("sovAdvBoundarySub")}
             </span>
           </div>
         </div>
@@ -241,10 +244,10 @@ export function SovereigntyView() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--brass)", letterSpacing: "0.06em" }}>
-              FIVE SOVEREIGN PILLARS
+              {t("sovFivePillars")}
             </span>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "24px", color: "var(--ink)", margin: "4px 0" }}>
-              How FORGE Guarantees Complete Isolation
+              {t("sovFivePillarsTitle")}
             </h2>
           </div>
           <button
@@ -252,7 +255,7 @@ export function SovereigntyView() {
             className="btn-brass-secondary"
             style={{ fontSize: "12px", padding: "8px 16px" }}
           >
-            {showTechnicalDetails ? "Hide Technical Details ▲" : "View Technical Runtime Details ▼"}
+            {showTechnicalDetails ? t("sovHideTech") : t("sovViewTech")}
           </button>
         </div>
 
@@ -296,9 +299,12 @@ export function SovereigntyView() {
                 </span>
               </div>
 
-              <h3 style={{ fontFamily: "var(--font-display)", fontSize: "20px", fontWeight: 600, color: "var(--ink)" }}>
-                {card.title}
-              </h3>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <h3 style={{ fontFamily: "var(--font-display)", fontSize: "20px", fontWeight: 600, color: "var(--ink)", margin: 0 }}>
+                  {card.title}
+                </h3>
+                <ReadAloudButton text={`${card.title}. ${card.badge}. ${card.description}`} compact />
+              </div>
 
               <p style={{ fontFamily: "var(--font-ui)", fontSize: "13.5px", color: "var(--ink-2)", lineHeight: 1.55 }}>
                 {card.description}
@@ -312,7 +318,7 @@ export function SovereigntyView() {
       <EnamelSurface variant="base" padding="spacious">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <BrassLabel variant="solid">TASK MODEL ROUTER</BrassLabel>
+            <BrassLabel variant="solid">{t("sovRouterTag")}</BrassLabel>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "22px", color: "var(--ink)", fontWeight: 500, margin: 0 }}>
               {t("sovModelRouterTitle")}
             </h2>
@@ -328,12 +334,12 @@ export function SovereigntyView() {
               border: "1px solid var(--sage)",
             }}
           >
-            RTX 4060 LAPTOP GPU (8GB VRAM BOUNDARY)
+            {t("sovGpuBoundary")}
           </span>
         </div>
 
         <p style={{ fontFamily: "var(--font-ui)", fontSize: "14px", color: "var(--ink-2)", margin: "0 0 16px 0", maxWidth: "80ch" }}>
-          Task routing dynamically binds specialized local engines according to VRAM capacity constraints. Reasoning executes on Qwen3 8B (5.2GB VRAM), while vision and OCR leverage sequential memory allocation and host computer vision to prevent out-of-memory GPU crash.
+          {t("sovRouterDesc")}
         </p>
 
         <div style={{ overflowX: "auto" }}>

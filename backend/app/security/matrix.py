@@ -424,8 +424,8 @@ def run_sec_008_shell_execution() -> SecurityTestResult:
         decision = gateway.evaluate(
             PolicyEvaluationRequest(
                 tool_name=shell_tool,
-                requester="AI_OPERATOR-1",
-                role=Role.AI_OPERATOR,
+                requester="VIEWER-1",
+                role=Role.VIEWER,
                 classification=DataClassification.INTERNAL,
             )
         )

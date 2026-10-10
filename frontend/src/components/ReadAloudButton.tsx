@@ -80,34 +80,29 @@ export function ReadAloudButton({
     setIsLoading(true);
 
     try {
-      // 1. Try sovereign local backend synthesis first (pyttsx3 SAPI5 or Piper)
-      const res = await synthesizeVoiceSpeech(textToSpeak.slice(0, 2000), effectiveLanguage);
+      // Truncate to first 450 characters (approx 2-3 core sentences) for snappy response
+      const snippetToSpeak = textToSpeak.length > 450 ? textToSpeak.slice(0, 450) + "..." : textToSpeak;
 
-      if (res.status === "SUCCESS" && res.audio_base64) {
-        const audio = new Audio(`data:audio/wav;base64,${res.audio_base64}`);
-        readAloudCoordinator.setActiveAudio(componentId, audio);
-        await audio.play();
-        setIsLoading(false);
-        return;
-      }
-
-      // 2. If backend reports voice is unavailable for this language, check strictly local browser voices
+      // 1. Prioritize INSTANT on-device browser SpeechSynthesis (0ms lag, supports system EN, HI, KN)
       if (typeof window !== "undefined" && window.speechSynthesis) {
         const voices = window.speechSynthesis.getVoices();
         const targetPrefix = effectiveLanguage === "hi" ? "hi" : effectiveLanguage === "kn" ? "kn" : "en";
 
-        // Strictly enforce local service check (zero cloud speech recognition/synthesis)
-        const localVoice = voices.find(
-          (v) =>
-            v.lang.toLowerCase().startsWith(targetPrefix) &&
-            (v.localService === true || v.name.includes("Desktop") || !v.name.includes("Online"))
-        );
+        // Find best matching voice for selected language
+        const matchedVoice =
+          voices.find((v) => v.lang.toLowerCase().startsWith(targetPrefix)) ||
+          voices.find((v) => v.lang.toLowerCase().includes(targetPrefix)) ||
+          (effectiveLanguage === "en" ? voices.find((v) => v.lang.startsWith("en")) : undefined);
 
-        if (localVoice) {
-          const utterance = new SpeechSynthesisUtterance(textToSpeak);
-          utterance.voice = localVoice;
-          utterance.lang = localVoice.lang;
-          utterance.rate = 1.0;
+        if (matchedVoice || voices.length > 0) {
+          const utterance = new SpeechSynthesisUtterance(snippetToSpeak);
+          if (matchedVoice) {
+            utterance.voice = matchedVoice;
+            utterance.lang = matchedVoice.lang;
+          } else {
+            utterance.lang = effectiveLanguage === "hi" ? "hi-IN" : effectiveLanguage === "kn" ? "kn-IN" : "en-US";
+          }
+          utterance.rate = 1.05;
 
           readAloudCoordinator.setActiveSpeechSynthesis(componentId, utterance);
           window.speechSynthesis.speak(utterance);
@@ -116,7 +111,23 @@ export function ReadAloudButton({
         }
       }
 
-      // 3. Truthfully report unavailable state with setup instruction
+      // 2. Fast bounded fallback to local sovereign backend synthesis (capped at 3s to prevent hangs)
+      const timeoutPromise = new Promise<{ status: string; error_message?: string }>((_, reject) =>
+        setTimeout(() => reject(new Error("Local voice backend synthesis timed out (3s).")), 3000)
+      );
+
+      const synthPromise = synthesizeVoiceSpeech(snippetToSpeak.slice(0, 300), effectiveLanguage);
+      const res = await Promise.race([synthPromise, timeoutPromise]);
+
+      if (res.status === "SUCCESS" && (res as any).audio_base64) {
+        const audio = new Audio(`data:audio/wav;base64,${(res as any).audio_base64}`);
+        readAloudCoordinator.setActiveAudio(componentId, audio);
+        await audio.play();
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Truthfully report unavailable state
       const langName = effectiveLanguage === "hi" ? "Hindi" : effectiveLanguage === "kn" ? "Kannada" : "English";
       const errMsg =
         res.error_message ||

@@ -5,6 +5,7 @@ import { DataClassification, Role } from "@/lib/api";
 import { ComputedRuntimeState } from "@/lib/runtime";
 import { ROLE_PERMISSIONS } from "@/lib/permissions";
 import { useTranslation } from "@/lib/i18n";
+import { ReadAloudButton } from "@/components/ReadAloudButton";
 
 export type ShellDestination = "missions" | "library" | "governance" | "audit" | "boundary";
 
@@ -354,6 +355,9 @@ export function Header({
                 {(["VIEWER", "ENGINEER", "ADMINISTRATOR"] as Role[]).map((r) => {
                   const cfg = ROLE_PERMISSIONS[r];
                   const isCurrent = role === r;
+                  const localizedSummary = r === "VIEWER" ? t("roleViewerSummary") : r === "ENGINEER" ? t("roleEngineerSummary") : t("roleAdminSummary");
+                  const localizedLabel = r === "VIEWER" ? (language === "hi" ? "दर्शक (VIEWER)" : language === "kn" ? "ವೀಕ್ಷಕ (VIEWER)" : "VIEWER (Read-Only)") : r === "ENGINEER" ? (language === "hi" ? "अभियंता (ENGINEER)" : language === "kn" ? "ಎಂಜಿನಿಯರ್ (ENGINEER)" : "ENGINEER (Standard Operations)") : (language === "hi" ? "प्रशासक (ADMINISTRATOR)" : language === "kn" ? "ನಿರ್ವಾಹಕ (ADMINISTRATOR)" : "ADMINISTRATOR (Full Clearance)");
+
                   return (
                     <div
                       key={r}
@@ -373,7 +377,7 @@ export function Header({
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ fontFamily: "var(--font-ui)", fontSize: "13px", fontWeight: 600, color: isCurrent ? "var(--brass)" : "var(--ink)" }}>
-                            {cfg.label}
+                            {localizedLabel}
                           </span>
                           {isCurrent && (
                             <span style={{ fontSize: "10px", color: "var(--sage)", fontFamily: "var(--font-mono)" }}>
@@ -381,13 +385,18 @@ export function Header({
                             </span>
                           )}
                         </div>
-                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--ink-3)", border: "1px solid var(--line)", padding: "1px 5px", borderRadius: "var(--radius-pill)" }}>
-                          {cfg.defaultClearance}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--ink-3)", border: "1px solid var(--line)", padding: "1px 5px", borderRadius: "var(--radius-pill)" }}>
+                            {cfg.defaultClearance}
+                          </span>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <ReadAloudButton text={`Role ${r}. Clearance: ${cfg.defaultClearance}. ${localizedSummary}`} compact />
+                          </div>
+                        </div>
                       </div>
 
                       <p style={{ fontFamily: "var(--font-ui)", fontSize: "11.5px", color: "var(--ink-2)", lineHeight: 1.35, margin: 0 }}>
-                        {cfg.summary}
+                        {localizedSummary}
                       </p>
 
                       <div style={{ display: "flex", gap: 10, fontSize: "10.5px", fontFamily: "var(--font-mono)", color: "var(--ink-3)", marginTop: 2 }}>

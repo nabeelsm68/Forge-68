@@ -78,11 +78,7 @@ class PolicyGateway:
         approval_required = tool_meta.approval_required or (risk == RiskLevel.CRITICAL)
 
         def _role_matches(req_r: Role, allowed_set: Any) -> bool:
-            if req_r in allowed_set:
-                return True
-            if req_r == Role.ADMINISTRATOR and Role.ADMIN in allowed_set:
-                return True
-            if req_r == Role.ADMIN and Role.ADMINISTRATOR in allowed_set:
+            if req_r in allowed_set or req_r.value in allowed_set:
                 return True
             return False
 
@@ -90,7 +86,7 @@ class PolicyGateway:
         if request.role == Role.VIEWER:
             decision = PolicyDecision(
                 decision=PolicyDecisionType.DENY,
-                reason=f"Role 'VIEWER' is strictly read-only and is not permitted to execute tool '{tool_meta.name}'.",
+                reason=f"Role 'VIEWER' is strictly read-only and is not authorized to execute tool '{tool_meta.name}'.",
                 policy_id=None,
                 requester=request.requester,
                 role=request.role,

@@ -167,6 +167,11 @@ def validate_and_load_image_file(
     """Load local image file with strict path traversal prevention."""
     base_dir = allowed_base_dir or settings.IMAGE_BASE_DIR
     resolved_base = Path(base_dir).resolve()
+    if not resolved_base.exists():
+        backend_base = (Path(__file__).resolve().parent.parent.parent / base_dir).resolve()
+        if backend_base.exists():
+            resolved_base = backend_base
+
     target_path = Path(file_path)
 
     # Path traversal check
@@ -178,9 +183,15 @@ def validate_and_load_image_file(
     try:
         resolved_target.relative_to(resolved_base)
     except ValueError:
-        raise PathTraversalError(
-            f"Path traversal detected: Target image '{file_path}' resolves outside allowed directory '{base_dir}'."
-        )
+        # Check if target resolves within the package data directory when running from repo root
+        pkg_base = (Path(__file__).resolve().parent.parent.parent / "data" / "demo" / "images").resolve()
+        try:
+            resolved_target.relative_to(pkg_base)
+            resolved_base = pkg_base
+        except ValueError:
+            raise PathTraversalError(
+                f"Path traversal detected: Target image '{file_path}' resolves outside allowed directory '{base_dir}'."
+            )
 
     if not resolved_target.exists() or not resolved_target.is_file():
         raise FileNotFoundError(f"Image file not found: '{resolved_target}'")

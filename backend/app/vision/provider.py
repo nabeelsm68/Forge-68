@@ -249,6 +249,52 @@ class MockVisionProvider(BaseVisionProvider):
                     raw_observation="Dial indicator observed at 33.0 bar gauge.",
                 )
             )
+        elif any(k in filename_lower or (request.prompt and k in request.prompt.lower()) for k in ["drawing", "cad", "blueprint", "component", "architecture", "design", "nozzle", "flange", "asme", "schematic"]):
+            findings.append(
+                VisualFinding(
+                    finding_type=FindingType.STRUCTURAL_ANOMALY,
+                    description=f"Flange Rating Class Discrepancy detected on {equipment_id} inlet nozzle N1 drawing: specified Class 150 (max 19.6 bar at 425°C) violates ASME B16.5 requirement for 35.0 bar design pressure. Mandatory Class 300 RTJ required.",
+                    equipment_id=equipment_id,
+                    location="Nozzle N1 - Top Hydrocracker Feed Inlet",
+                    severity=SeverityLevel.CRITICAL,
+                    observed_value=150.0,
+                    unit="Class",
+                    confidence=0.98,
+                    source_image_hash=request.provenance.sha256_hash,
+                    provenance=prov,
+                    raw_observation="Blueprint callout reads '12-in Class 150 RF'. Required minimum is Class 300 RTJ.",
+                )
+            )
+            findings.append(
+                VisualFinding(
+                    finding_type=FindingType.WELD_DEFECT,
+                    description=f"ASME Section VIII Div 1 UG-37 reinforcement pad weld throat deficit on Nozzle N2: throat dimension indicated as 8.5 mm vs required 11.2 mm minimum.",
+                    equipment_id=equipment_id,
+                    location="Bottom Effluent Discharge Nozzle N2 pad weld",
+                    severity=SeverityLevel.HIGH,
+                    observed_value=8.5,
+                    unit="mm",
+                    confidence=0.94,
+                    source_image_hash=request.provenance.sha256_hash,
+                    provenance=prov,
+                    raw_observation="Fillet weld throat callout 8.5 mm is below ASME UG-37 minimum calculated throat of 11.2 mm.",
+                )
+            )
+            findings.append(
+                VisualFinding(
+                    finding_type=FindingType.CORROSION,
+                    description=f"Corrosion Allowance (CA) specification undersized: Drawing notes 1.5 mm CA specified; refinery sour service spec SPEC-ARCH-204 mandates 3.0 mm minimum.",
+                    equipment_id=equipment_id,
+                    location="Reactor Shell Course 1 & 2 Wall Spec",
+                    severity=SeverityLevel.MEDIUM,
+                    observed_value=1.5,
+                    unit="mm",
+                    confidence=0.92,
+                    source_image_hash=request.provenance.sha256_hash,
+                    provenance=prov,
+                    raw_observation="Drawing General Note 4 specifies 1.5 mm CA. Refinery engineering spec mandates 3.0 mm.",
+                )
+            )
         elif "corrosion" in filename_lower or "defect" in filename_lower:
             findings.append(
                 VisualFinding(

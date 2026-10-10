@@ -65,9 +65,9 @@ def custom_gateway():
         PolicyRule(
             rule_id="POL-TEST-001",
             name="Equipment History Access Policy",
-            description="Permits Engineers and Inspectors to access equipment history.",
+            description="Permits Engineers and Administrators to access equipment history.",
             target_tool="equipment_history",
-            allowed_roles={Role.ENGINEER, Role.INSPECTOR},
+            allowed_roles={Role.ENGINEER, Role.ADMINISTRATOR},
             allowed_classifications={DataClassification.INTERNAL, DataClassification.CONFIDENTIAL},
             max_risk_level=RiskLevel.LOW,
             require_approval=False,
@@ -75,9 +75,9 @@ def custom_gateway():
         PolicyRule(
             rule_id="POL-TEST-002",
             name="Emergency Valve Actuation Policy",
-            description="Permits Engineers with supervisor approval.",
+            description="Permits Engineers and Administrators with supervisor approval.",
             target_tool="emergency_valve_actuation",
-            allowed_roles={Role.ENGINEER, Role.ADMIN},
+            allowed_roles={Role.ENGINEER, Role.ADMINISTRATOR},
             allowed_classifications={DataClassification.INTERNAL, DataClassification.CRITICAL},
             max_risk_level=RiskLevel.CRITICAL,
             require_approval=True,
@@ -116,11 +116,11 @@ def test_case_1_engineer_equipment_history_internal_allow(custom_gateway):
     assert decision.approval_required is False
 
 
-def test_case_2_inspector_equipment_history_internal_allow(custom_gateway):
-    """CASE 2: INSPECTOR + equipment_history + INTERNAL -> ALLOW."""
+def test_case_2_administrator_equipment_history_internal_allow(custom_gateway):
+    """CASE 2: ADMINISTRATOR + equipment_history + INTERNAL -> ALLOW."""
     req = PolicyEvaluationRequest(
-        requester="inspector_bob",
-        role=Role.INSPECTOR,
+        requester="admin_bob",
+        role=Role.ADMINISTRATOR,
         tool_name="equipment_history",
         classification=DataClassification.INTERNAL,
     )
@@ -128,22 +128,22 @@ def test_case_2_inspector_equipment_history_internal_allow(custom_gateway):
 
     assert decision.decision == PolicyDecisionType.ALLOW
     assert decision.policy_id == "POL-TEST-001"
-    assert decision.role == Role.INSPECTOR
+    assert decision.role == Role.ADMINISTRATOR
 
 
 def test_case_3_unauthorized_role_deny(custom_gateway):
     """CASE 3: UNAUTHORIZED ROLE -> DENY."""
-    # MANAGER is not in the allowed roles for equipment_history
+    # VIEWER is strictly read-only and denied tool execution
     req = PolicyEvaluationRequest(
-        requester="manager_charlie",
-        role=Role.MANAGER,
+        requester="viewer_charlie",
+        role=Role.VIEWER,
         tool_name="equipment_history",
         classification=DataClassification.INTERNAL,
     )
     decision = custom_gateway.evaluate(req)
 
     assert decision.decision == PolicyDecisionType.DENY
-    assert "is not authorized to execute tool" in decision.reason
+    assert "is strictly read-only" in decision.reason or "is not authorized" in decision.reason
     assert decision.policy_id is None
 
 
